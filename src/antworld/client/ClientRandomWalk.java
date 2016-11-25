@@ -41,7 +41,7 @@ public class ClientRandomWalk
   {
     mapReader = new MapReader("resources/AntTestWorld1.png");
     world = mapReader.getWorld();
-    //pathFinder = new PathFinder(world);
+//    pathFinder = new PathFinder(world, 60,80 );
     myTeam = team;
     System.out.println("Starting " + team + " on " + host + ":" + portNumber + " at "
         + System.currentTimeMillis());
