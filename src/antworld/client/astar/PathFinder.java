@@ -29,6 +29,7 @@ public class PathFinder {
   private Cell[][] world;
   private int mapWidth;
   private int mapHeight;
+  private boolean testPush;
 
   public PathFinder(Cell[][] world, int mapWidth, int mapHeight)
   {
