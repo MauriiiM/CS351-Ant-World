@@ -8,6 +8,7 @@ import java.net.UnknownHostException;
 import java.util.Random;
 
 import antworld.client.astar.MapReader;
+import antworld.client.astar.PathFinder;
 import antworld.common.*;
 import antworld.common.AntAction.AntActionType;
 
@@ -28,7 +29,7 @@ public class Client extends Ant
   {
     mapReader = new MapReader("resources/AntTestWorld1.png");
     world = mapReader.getWorld();
-//    pathFinder = new PathFinder(world, 60,80 );
+    pathFinder = new PathFinder(world, mapReader.getMapWidth(), mapReader.getMapHeight());
     myTeam = team;
     System.out.println("Starting " + team + " on " + host + ":" + portNumber + " at "
         + System.currentTimeMillis());

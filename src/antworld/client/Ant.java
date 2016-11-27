@@ -12,39 +12,101 @@ import java.util.Random;
  */
 public abstract class Ant
 {
+  static Random random = Constants.random;
   static PathFinder pathFinder;
   static int antsUnderground;
   static Cell[][] world;
   Direction dir, lastDir;
   int centerX, centerY;
-//  AntAction action;
-  boolean hasPath;
+  AntData ant;
+  //  AntAction action;
+  boolean hasPath = false;
   Path path;
 
-  // A random number generator is created in Constants. Use it.
-  // Do not create a new generator every time you want a random number nor
-  // even in every class were you want a generator.
-  static Random random = Constants.random;
-
-
-  boolean attackEnemyAnt(AntData ant, AntAction action)
+  //only called when ant's in the nest and will be true
+  boolean dropFood(AntData ant, AntAction action)
   {
-    return false;
+    action.type = AntAction.AntActionType.DROP;
+    action.quantity = ant.carryUnits;
+    return true;
   }
 
-  //=============================================================================
-  // This method sets the given action to EXIT_NEST if and only if the given
-  // ant is underground.
-  // Returns true if an action was set. Otherwise returns false
-  //=============================================================================
-  protected boolean exitNest(AntData ant, AntAction action)
+  boolean exitNest(AntData ant, AntAction action)
   {
     if (ant.underground)
     {
+      if(ant.carryUnits > 0)
+      {
+        return dropFood(ant, action);
+      }
       action.type = AntAction.AntActionType.EXIT_NEST;
       action.x = centerX - (Constants.NEST_RADIUS - 1) + random.nextInt(2 * (Constants.NEST_RADIUS - 1));
       action.y = centerY - (Constants.NEST_RADIUS - 1) + random.nextInt(2 * (Constants.NEST_RADIUS - 1));
       return true;
+    }
+    return false;
+  }
+
+  /**
+   * @todo make astar paint a path back home with the Rgb value to find a path once and not every turn
+   */
+  boolean goToNest(AntData ant, AntAction action)
+  {
+    if (ant.carryUnits == ant.antType.getCarryCapacity())
+    {
+//      System.err.println("GOING BACK HOME");
+      if (hasPath && path.getPath().size() > 0)
+      {
+        action.type = AntAction.AntActionType.MOVE;
+        action.direction = xyCoordinateToDirection(path.getPath().get(0).getX(), path.getPath().get(0).getY(), ant.gridX, ant.gridY);
+        path.getPath().remove(0);
+      }
+      else if (hasPath && path.getPath().size() == 0)
+      {
+        action.type = AntAction.AntActionType.ENTER_NEST;
+        path = null;
+        hasPath = false;
+      }
+      else
+      {
+        System.err.println(centerX + "\ty="+ centerY);
+        path = pathFinder.findPath(ant.gridX, ant.gridY, centerX , centerY);
+        hasPath = true;
+        action.direction = xyCoordinateToDirection(path.getPath().get(0).getX(), path.getPath().get(0).getY(), ant.gridX, ant.gridY);
+        action.type = AntAction.AntActionType.MOVE;
+        path.getPath().remove(0);
+      }
+      return true;
+    }
+    return false;
+  }
+
+  boolean pickUpWater(AntData ant, AntAction action)
+  {
+    if (lastDir != null)
+    {
+      if (world[ant.gridX + lastDir.deltaX()][ant.gridY + lastDir.deltaY()].getLandType() == LandType.WATER)
+      {
+        action.type = AntAction.AntActionType.PICKUP;
+        action.direction = lastDir;
+        action.quantity = ant.antType.getCarryCapacity() - 1;
+        return true;
+      }
+    }
+    return false;
+  }
+
+  boolean pickUpFood(AntData ant, AntAction action)
+  {
+    if (lastDir != null)
+    {
+      if (world[ant.gridX + lastDir.deltaX()][ant.gridY + lastDir.deltaY()].getFood() != null)
+      {
+        action.type = AntAction.AntActionType.PICKUP;
+        action.direction = lastDir;
+        action.quantity = ant.antType.getCarryCapacity() - 1;
+        return true;
+      }
     }
     return false;
   }
@@ -73,47 +135,22 @@ public abstract class Ant
     return dir;
   }
 
-  protected boolean pickUpWater(AntData ant, AntAction action)
+  private Direction xyCoordinateToDirection(int nextX, int nextY, int antX, int antY)
   {
-    if (lastDir != null)
-    {
-      if (world[ant.gridX + lastDir.deltaX()][ant.gridY + lastDir.deltaY()].getLandType() == LandType.WATER)
-      {
-        action.type = AntAction.AntActionType.PICKUP;
-        action.direction = lastDir;
-        action.quantity = ant.antType.getCarryCapacity() - 1;
-        return true;
-      }
-    }
-    return false;
+    if (nextX == antX && nextY < antY) return Direction.NORTH;
+    if (nextX > antX && nextY < antY) return Direction.NORTHEAST;
+    if (nextX > antX && nextY == antY) return Direction.EAST;
+    if (nextX > antX && nextY > antY) return Direction.SOUTHEAST;
+    if (nextX == antX && nextY > antY) return Direction.SOUTH;
+    if (nextX < antX && nextY > antY) return Direction.SOUTHWEST;
+    if (nextX < antX && nextY == antY) return Direction.WEST;
+    if (nextX < antX && nextY < antY) return Direction.NORTHWEST;
+    System.err.println("NO DIRECTION!!!!!!!!!!!");
+    return null;
   }
-
-  protected boolean pickUpFood(AntData ant, AntAction action)
-  {
-    if (lastDir != null)
-    {
-      if (world[ant.gridX + lastDir.deltaX()][ant.gridY + lastDir.deltaY()].getFood() != null)
-      {
-        action.type = AntAction.AntActionType.PICKUP;
-        action.direction = lastDir;
-        action.quantity = ant.antType.getCarryCapacity() - 1;
-        return true;
-      }
-    }
-    return false;
-  }
-
   /*--------------------HAVEN'T WORKED ON BELOW----------------------*/
-  /**
-   * @todo make astar paint a path back home with the Rgb value to find a path once and not every turn
-   */
-  protected boolean goToNest(AntData ant, AntAction action)
+  boolean attackEnemyAnt(AntData ant, AntAction action)
   {
-    if (ant.carryUnits == ant.antType.getCarryCapacity())
-    {
-      System.err.println("GOING BACK HOME");
-//      pathFinder.findPath(centerX + Constants.NEST_RADIUS - 1, centerY + Constants.NEST_RADIUS - 1, ant.gridX, ant.gridY);
-    }
     return false;
   }
 
@@ -139,7 +176,8 @@ public abstract class Ant
     if (ant.carryType == FoodType.WATER)
     {
       dir = Direction.WEST;
-    } else
+    }
+    else
     {
       dir = Direction.EAST;
     }
