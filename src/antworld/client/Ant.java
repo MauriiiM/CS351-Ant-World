@@ -16,7 +16,7 @@ public class Ant
   static PathFinder pathFinder;
   static int centerX, centerY;
   static int antsUnderground;
-  static Cell[][] world;
+  static MapCell[][] world;
   static CommData data;
   Direction dir, lastDir;
   AntData ant;

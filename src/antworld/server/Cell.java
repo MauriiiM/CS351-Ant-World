@@ -10,10 +10,8 @@ public class Cell
 {
   private final int height;
   private final int x, y;
-  
   private LandType landType;
   private Nest nest = null;
-  
   private GameObject gameObject = null;
   
   

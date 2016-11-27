@@ -6,6 +6,7 @@ import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Random;
 
 import antworld.client.astar.MapReader;
@@ -26,11 +27,13 @@ public class Client
   private Socket clientSocket;
   private HashMap<AntData, Ant> dataObjectmap;
   private Ant ant;
+  private MapCell[][] world;
 
   private Client(String host, int portNumber, TeamNameEnum team)
   {
     mapReader = new MapReader("resources/AntTestWorld1.png");
     Ant.world = mapReader.getWorld();
+    world = mapReader.getWorld();
     Ant.pathFinder = new PathFinder(Ant.world, mapReader.getMapWidth(), mapReader.getMapHeight());
     myTeam = team;
     dataObjectmap = new HashMap<>();
@@ -233,6 +236,25 @@ public class Client
   {
     AntAction action = new AntAction(AntActionType.STASIS);
     this.ant = dataObjectmap.get(ant);
+
+    if(data.foodSet.size() >0)
+    {
+      System.err.println("FOUND SOME FOOD!!!!");
+      Iterator<FoodData> iterator = data.foodSet.iterator();
+      int foodX;
+      int foodY;
+      String foodData;
+      while(iterator.hasNext())
+      {
+        foodX = iterator.next().gridX;
+        foodY = iterator.next().gridY;
+        foodData = iterator.next().toString();
+        System.out.println("Found Food @ (" + foodX + "," + foodY + ") : " + foodData);
+        mapReader.updateCellFoodProximity(foodX,foodY);
+      }
+      //int foodX = data.foodSet.get(0);
+      //mapReader.updateCellFoodProximity();
+    }
 
     if (ant.ticksUntilNextAction > 0) return action;
 
