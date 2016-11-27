@@ -10,18 +10,24 @@ import java.util.Random;
 /**
  * Created by mauricio on 11/23/16.
  */
-public abstract class Ant
+public class Ant
 {
   static Random random = Constants.random;
   static PathFinder pathFinder;
+  static int centerX, centerY;
   static int antsUnderground;
   static Cell[][] world;
+  static CommData data;
   Direction dir, lastDir;
-  int centerX, centerY;
   AntData ant;
   //  AntAction action;
   boolean hasPath = false;
   Path path;
+
+  Ant(AntData ant)
+  {
+    this.ant = ant;
+  }
 
   //only called when ant's in the nest and will be true
   boolean dropFood(AntData ant, AntAction action)
@@ -48,7 +54,7 @@ public abstract class Ant
   }
 
   /**
-   * @todo make astar paint a path back home with the Rgb value to find a path once and not every turn
+   * @todo currently going all the way to center of nest, what's the math to go just to the nest?
    */
   boolean goToNest(AntData ant, AntAction action)
   {

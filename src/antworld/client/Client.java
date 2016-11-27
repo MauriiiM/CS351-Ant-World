@@ -5,6 +5,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.util.HashMap;
 import java.util.Random;
 
 import antworld.client.astar.MapReader;
@@ -12,8 +13,7 @@ import antworld.client.astar.PathFinder;
 import antworld.common.*;
 import antworld.common.AntAction.AntActionType;
 
-/**@todo currently extends ant, but should be changed*/
-public class Client extends Ant
+public class Client
 {
   private static final boolean DEBUG = true;
   private final TeamNameEnum myTeam;
@@ -24,13 +24,16 @@ public class Client extends Ant
   private NestNameEnum myNestName = null;
   private MapReader mapReader;
   private Socket clientSocket;
+  private HashMap<AntData, Ant> dataObjectmap;
+  private Ant ant;
 
-  public Client(String host, int portNumber, TeamNameEnum team)
+  private Client(String host, int portNumber, TeamNameEnum team)
   {
     mapReader = new MapReader("resources/AntTestWorld1.png");
-    world = mapReader.getWorld();
-    pathFinder = new PathFinder(world, mapReader.getMapWidth(), mapReader.getMapHeight());
+    Ant.world = mapReader.getWorld();
+    Ant.pathFinder = new PathFinder(Ant.world, mapReader.getMapWidth(), mapReader.getMapHeight());
     myTeam = team;
+    dataObjectmap = new HashMap<>();
     System.out.println("Starting " + team + " on " + host + ":" + portNumber + " at "
         + System.currentTimeMillis());
 
@@ -142,14 +145,22 @@ public class Client extends Ant
     }
 
     myNestName = data.myNest;
-    centerX = data.nestData[myNestName.ordinal()].centerX;
-    centerY = data.nestData[myNestName.ordinal()].centerY;
+    Ant.centerX = data.nestData[myNestName.ordinal()].centerX;
+    Ant.centerY = data.nestData[myNestName.ordinal()].centerY;
     System.out.println("Client: ==== Nest Assigned ===>: " + myNestName);
     return data;
   }
 
+  /**
+   * @param data
+   * @todo find a way to add new ants to hashmap, currently just adds first 100, that should also solve when they die
+   */
   public void mainGameLoop(CommData data)
   {
+    for (AntData ant : data.myAntList)
+    {
+      dataObjectmap.put(ant, new Ant(ant));
+    }
     while (true)
     {
       try
@@ -221,29 +232,30 @@ public class Client extends Ant
   private AntAction chooseAction(CommData data, AntData ant)
   {
     AntAction action = new AntAction(AntActionType.STASIS);
+    this.ant = dataObjectmap.get(ant);
 
     if (ant.ticksUntilNextAction > 0) return action;
 
-    if (exitNest(ant, action)) return action;
+    if (this.ant.exitNest(ant, action)) return action;
 
-    if (attackEnemyAnt(ant, action)) return action;
+    if (this.ant.attackEnemyAnt(ant, action)) return action;
 
-    if (goToNest(ant, action)) return action;
+    if (this.ant.goToNest(ant, action)) return action;
 
-    if (lastDir != null)
+    if (this.ant.lastDir != null)
     {
-      if (pickUpFood(ant, action)) return action;
+      if (this.ant.pickUpFood(ant, action)) return action;
 
-      if (pickUpWater(ant, action)) return action;
+      if (this.ant.pickUpWater(ant, action)) return action;
     }
 
-    if (goToEnemyAnt(ant, action)) return action;
+    if (this.ant.goToEnemyAnt(ant, action)) return action;
 
-    if (goToFood(ant, action)) return action;
+    if (this.ant.goToFood(ant, action)) return action;
 
-    if (goToGoodAnt(ant, action)) return action;
+    if (this.ant.goToGoodAnt(ant, action)) return action;
 
-    if (goExplore(ant, action)) return action;
+    if (this.ant.goExplore(ant, action)) return action;
 
     return action;
   }
