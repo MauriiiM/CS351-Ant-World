@@ -96,7 +96,7 @@ public class Ant
         action.type = AntAction.AntActionType.PICKUP;
         action.direction = lastDir;
         action.quantity = ant.antType.getCarryCapacity() - 1;
-        return true;
+        //return true;
       }
     }
     return false;
@@ -111,7 +111,7 @@ public class Ant
         action.type = AntAction.AntActionType.PICKUP;
         action.direction = lastDir;
         action.quantity = ant.antType.getCarryCapacity() - 1;
-        return true;
+        //return true;
       }
     }
     return false;

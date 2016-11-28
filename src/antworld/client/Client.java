@@ -239,21 +239,19 @@ public class Client
 
     if(data.foodSet.size() >0)
     {
-      System.err.println("FOUND SOME FOOD!!!!");
-      Iterator<FoodData> iterator = data.foodSet.iterator();
+      FoodData nextFood;
       int foodX;
       int foodY;
       String foodData;
-      while(iterator.hasNext())
+      for(Iterator<FoodData> i = data.foodSet.iterator(); i.hasNext();)
       {
-        foodX = iterator.next().gridX;
-        foodY = iterator.next().gridY;
-        foodData = iterator.next().toString();
+        nextFood = i.next();
+        foodX = nextFood.gridX;
+        foodY = nextFood.gridY;
+        foodData = nextFood.toString();
         System.out.println("Found Food @ (" + foodX + "," + foodY + ") : " + foodData);
         mapReader.updateCellFoodProximity(foodX,foodY);
       }
-      //int foodX = data.foodSet.get(0);
-      //mapReader.updateCellFoodProximity();
     }
 
     if (ant.ticksUntilNextAction > 0) return action;

@@ -164,7 +164,7 @@ public class MapReader
         nextVal = diffusionValues[i][j];
         world[nextX][nextY].setFoodProximityVal(nextVal);
         //System.out.println("i="+i+" || j="+j + " || diameter=" + diameter);
-        System.out.println("Setting world["+nextX+"]["+nextY+"] = " + nextVal);
+        //System.out.println("Setting world["+nextX+"]["+nextY+"] = " + nextVal);
       }
     }
   }
