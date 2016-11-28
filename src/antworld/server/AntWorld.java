@@ -56,12 +56,16 @@ public class AntWorld implements ActionListener
     this.showGUI = showGUI;
     System.out.println(title);
 
-    drawPanel = new Renderer(this, title, FRAME_WIDTH, FRAME_HEIGHT);
-    JFrame window = drawPanel.window;
+    JFrame window = null;
+    if (showGUI)
+    {
+      drawPanel = new Renderer(this, title, FRAME_WIDTH, FRAME_HEIGHT);
+      window = drawPanel.window;
+    }
 
     //********************* Note On map replacement  **************************
     //The map must have at least a one pixel a boarder of water: LandType.WATER.getColor.
-    BufferedImage map = Util.loadImage("AntTestWorldDiffusion2.png", window);
+    BufferedImage map = Util.loadImage("AntTestWorld2.png", window);
     worldWidth = map.getWidth();
     worldHeight = map.getHeight();
 
@@ -94,10 +98,10 @@ public class AntWorld implements ActionListener
       int x0 = nest.getCenterX();
       int y0 = nest.getCenterY();
       for (int x = x0 - Constants.NEST_RADIUS; x <= x0
-        + Constants.NEST_RADIUS; x++)
+          + Constants.NEST_RADIUS; x++)
       {
         for (int y = y0 - Constants.NEST_RADIUS; y <= y0
-          + Constants.NEST_RADIUS; y++)
+            + Constants.NEST_RADIUS; y++)
         {
           if (nest.isInNest(x, y))
           {
@@ -109,15 +113,21 @@ public class AntWorld implements ActionListener
 
     createHashMapsOfGameObjects();
 
-    drawPanel.initWorld(world, worldWidth, worldHeight);
-    drawPanel.repaint();
+    if (showGUI)
+    {
+      drawPanel.initWorld(world, worldWidth, worldHeight);
+      drawPanel.repaint();
+    }
 
     gameTimer = new Timer(Constants.TIME_STEP_MSEC, this);
 
     System.out.println("Done Initializing AntWorld");
     server = new Server(this, nestList);
     server.start();
-    dataViewer = new DataViewer(nestList);
+    if (showGUI)
+    {
+      dataViewer = new DataViewer(nestList);
+    }
 
     gameTimer.start();
   }
@@ -220,16 +230,15 @@ public class AntWorld implements ActionListener
       for (int y = 0; y < worldHeight; y++)
       {
         int rgb = (map.getRGB(x, y) & 0x00FFFFFF);
-        LandType landType = LandType.GRASS;
+        LandType landType;
         int height = 0;
         if (rgb == 0x0)
         {
           landType = LandType.NEST;
-          NestNameEnum nestName = NestNameEnum.values()[Nest
-            .getNextID()];
+          NestNameEnum nestName = NestNameEnum.values()[Nest.getNextID()];
           nestList.add(new Nest(nestName, x, y));
         }
-        if (rgb == 0xF0E68C)
+        else if (rgb == 0xF0E68C)
         {
           landType = LandType.NEST;
         }
@@ -239,9 +248,8 @@ public class AntWorld implements ActionListener
         }
         else
         {
-          int g = (rgb & 0x0000FF00) >> 8;
-
-          height = g - 55;
+          landType = LandType.GRASS;
+          height = LandType.getMapHeight(rgb);
         }
         // System.out.println("("+x+","+y+") rgb="+rgb +
         // ", landType="+landType
@@ -305,7 +313,7 @@ public class AntWorld implements ActionListener
     world[x][y].setAnt(ant);
     antBlocks[x / BLOCK_SIZE][y / BLOCK_SIZE].add(ant);
 
-    drawPanel.drawCell(world[x][y]);
+    if (drawPanel != null) drawPanel.drawCell(world[x][y]);
   }
 
   public void addFood(FoodSpawnSite foodSpawnSite, FoodData food)
@@ -316,7 +324,7 @@ public class AntWorld implements ActionListener
     world[x][y].setFood(foodSpawnSite, food);
     foodBlocks[x / BLOCK_SIZE][y / BLOCK_SIZE].add(food);
 
-    drawPanel.drawCell(world[x][y]);
+    if (drawPanel != null) drawPanel.drawCell(world[x][y]);
   }
 
   public void removeAnt(AntData ant)
@@ -328,7 +336,7 @@ public class AntWorld implements ActionListener
 
     world[x][y].setAnt(null);
     antBlocks[x / BLOCK_SIZE][y / BLOCK_SIZE].remove(ant);
-    drawPanel.drawCell(world[x][y]);
+    if (drawPanel != null) drawPanel.drawCell(world[x][y]);
   }
 
   public void removeFood(FoodData food)
@@ -340,7 +348,7 @@ public class AntWorld implements ActionListener
 
     world[x][y].setFood(null, null);
     foodBlocks[x / BLOCK_SIZE][y / BLOCK_SIZE].remove(food);
-    drawPanel.drawCell(world[x][y]);
+    if (drawPanel != null) drawPanel.drawCell(world[x][y]);
   }
 
   public void removeGameObj(GameObject obj)
@@ -362,12 +370,15 @@ public class AntWorld implements ActionListener
     ant.gridX = to.getLocationX();
     ant.gridY = to.getLocationY();
 
-    drawPanel.drawCell(from);
-    drawPanel.drawCell(to);
+    if (drawPanel != null)
+    {
+      drawPanel.drawCell(from);
+      drawPanel.drawCell(to);
+    }
     antBlocks[from.getLocationX() / BLOCK_SIZE][from.getLocationY()
-      / BLOCK_SIZE].remove(ant);
+        / BLOCK_SIZE].remove(ant);
     antBlocks[to.getLocationX() / BLOCK_SIZE][to.getLocationY()
-      / BLOCK_SIZE].add(ant);
+        / BLOCK_SIZE].add(ant);
   }
 
   public void appendAntsInProximity(AntData myAnt, HashSet<AntData> antSet)
@@ -378,21 +389,21 @@ public class AntWorld implements ActionListener
     NestNameEnum nestExclude = myAnt.nestName;
 
     for (int i = (int) Math.max(
-      Math.floor(x / BLOCK_SIZE - radius / BLOCK_SIZE), 0); i <= Math
-      .min(Math.ceil(x / BLOCK_SIZE + radius / BLOCK_SIZE),
-        antBlocks.length - 1); ++i)
+        Math.floor(x / BLOCK_SIZE - radius / BLOCK_SIZE), 0); i <= Math
+        .min(Math.ceil(x / BLOCK_SIZE + radius / BLOCK_SIZE),
+            antBlocks.length - 1); ++i)
     {
       for (int j = (int) Math.max(
-        Math.floor(y / BLOCK_SIZE - radius / BLOCK_SIZE), 0); j <= Math
-        .min(Math.ceil(y / BLOCK_SIZE + radius / BLOCK_SIZE),
-          antBlocks[i].length - 1); ++j)
+          Math.floor(y / BLOCK_SIZE - radius / BLOCK_SIZE), 0); j <= Math
+          .min(Math.ceil(y / BLOCK_SIZE + radius / BLOCK_SIZE),
+              antBlocks[i].length - 1); ++j)
       {
         for (AntData ant : antBlocks[i][j])
         {
           if (ant.nestName == nestExclude)
           { continue; }
           if (Util.manhattanDistance((int) x, (int) y, ant.gridX,
-            ant.gridY) <= radius)
+              ant.gridY) <= radius)
           { antSet.add(ant); }
         }
       }
@@ -429,10 +440,10 @@ public class AntWorld implements ActionListener
     double radius = myAnt.antType.getVisionRadius();
 
     for (int i = (int) Math.max(Math.floor(x / BLOCK_SIZE - radius / BLOCK_SIZE), 0); i <= Math.min(
-      Math.ceil(x / BLOCK_SIZE + radius / BLOCK_SIZE), foodBlocks.length - 1); ++i)
+        Math.ceil(x / BLOCK_SIZE + radius / BLOCK_SIZE), foodBlocks.length - 1); ++i)
     {
       for (int j = (int) Math.max(Math.floor(y / BLOCK_SIZE - radius / BLOCK_SIZE), 0); j <= Math.min(
-        Math.ceil(y / BLOCK_SIZE + radius / BLOCK_SIZE), foodBlocks[i].length - 1); ++j)
+          Math.ceil(y / BLOCK_SIZE + radius / BLOCK_SIZE), foodBlocks[i].length - 1); ++j)
       {
         for (FoodData food : foodBlocks[i][j])
         {
@@ -470,13 +481,13 @@ public class AntWorld implements ActionListener
       if (myNest.team == TeamNameEnum.NEARLY_BRAINLESS_BOTS)
       {
         CommData commData = NearlyBrainlessBots.chooseActionsOfAllAnts(
-          world, myNest);
+            world, myNest);
         myNest.updateReceive(this, commData);
         continue;
       }
 
       if (wallClock > myNest.getTimeOfLastMessageFromClient()
-        + Server.TIMEOUT_MAX_MSEC_BETWEEN_RECV)
+          + Server.TIMEOUT_MAX_MSEC_BETWEEN_RECV)
       {
         server.closeClient(myNest.nestName);
         myNest.sendAllAntsUnderground(this);
@@ -524,8 +535,11 @@ public class AntWorld implements ActionListener
       }
     }
 
-    drawPanel.update();
-    dataViewer.update(nestList);
+    if (drawPanel != null)
+    {
+      drawPanel.update();
+      dataViewer.update(nestList);
+    }
 
     if (wallClock >= lastRestoreTime + RESTORE_FREQUENCY)
     {
@@ -568,7 +582,6 @@ public class AntWorld implements ActionListener
       {
          int rgb = (map.getRGB(x, y) & 0x00FFFFFF);
          FoodType foodType = FoodType.identifyTypeByColor(rgb);
-
          if (foodType != null)
          {
            foodSpawnList.add(new FoodSpawnSite(foodType, x, y, nestList.size()));
@@ -584,20 +597,19 @@ public class AntWorld implements ActionListener
   // // spawnSite.spawn(this);
   // // }
   // }
-
 */
 
   public static void main(String[] args)
   {
-
-    //new AntWorld(true, "restore/AntWorld_RestorePoint_2014-09-19.09-51.dat");
-    new AntWorld(true, null);
-
-    // for (TeamNameEnum team: TeamNameEnum.values())
-    // {
-    // System.out.println("team="+team +
-    // ", s="+ServerToClientConnection.getPassword(team));
-    // }
+    boolean showGUI = true;
+    if (args != null && args.length > 0)
+    {
+      for (String field : args)
+      {
+        if (field.equals("-nogui")) showGUI = false;
+      }
+    }
+    new AntWorld(showGUI, null);
   }
 
 }

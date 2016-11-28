@@ -31,7 +31,7 @@ public class Client
 
   private Client(String host, int portNumber, TeamNameEnum team)
   {
-    mapReader = new MapReader("resources/AntTestWorld1.png");
+    mapReader = new MapReader("resources/AntTestWorld2.png");
     Ant.world = mapReader.getWorld();
     world = mapReader.getWorld();
     Ant.pathFinder = new PathFinder(Ant.world, mapReader.getMapWidth(), mapReader.getMapHeight());

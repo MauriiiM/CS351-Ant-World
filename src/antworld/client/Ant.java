@@ -37,11 +37,18 @@ public class Ant
     return true;
   }
 
+  AntAction.AntActionType enterNest()
+  {
+    path = null;
+    hasPath = false;
+    return AntAction.AntActionType.ENTER_NEST;
+  }
+
   boolean exitNest(AntData ant, AntAction action)
   {
     if (ant.underground)
     {
-      if(ant.carryUnits > 0)
+      if (ant.carryUnits > 0)
       {
         return dropFood(ant, action);
       }
@@ -58,7 +65,7 @@ public class Ant
    */
   boolean goToNest(AntData ant, AntAction action)
   {
-    if (ant.carryUnits == ant.antType.getCarryCapacity())
+    if (hasPath || ant.carryUnits == ant.antType.getCarryCapacity())
     {
 //      System.err.println("GOING BACK HOME");
       if (hasPath && path.getPath().size() > 0)
@@ -69,14 +76,12 @@ public class Ant
       }
       else if (hasPath && path.getPath().size() == 0)
       {
-        action.type = AntAction.AntActionType.ENTER_NEST;
-        path = null;
-        hasPath = false;
+        action.type = enterNest();
       }
       else
       {
-        System.err.println(centerX + "\ty="+ centerY);
-        path = pathFinder.findPath(ant.gridX, ant.gridY, centerX , centerY);
+        System.err.println(centerX + "\ty=" + centerY);
+        path = pathFinder.findPath(ant.gridX, ant.gridY, centerX, centerY);
         hasPath = true;
         action.direction = xyCoordinateToDirection(path.getPath().get(0).getX(), path.getPath().get(0).getY(), ant.gridX, ant.gridY);
         action.type = AntAction.AntActionType.MOVE;
@@ -154,6 +159,7 @@ public class Ant
     System.err.println("NO DIRECTION!!!!!!!!!!!");
     return null;
   }
+
   /*--------------------HAVEN'T WORKED ON BELOW----------------------*/
   boolean attackEnemyAnt(AntData ant, AntAction action)
   {
