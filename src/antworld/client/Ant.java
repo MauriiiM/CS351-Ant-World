@@ -1,13 +1,16 @@
 package antworld.client;
 
+import antworld.client.astar.MapReader;
 import antworld.client.astar.Path;
 import antworld.client.astar.PathFinder;
 import antworld.common.*;
 import antworld.server.Cell;
 
+import java.util.Iterator;
 import java.util.Random;
 
 /**
+ * Each servers ant data is mapped to an Ant object
  * Created by mauricio on 11/23/16.
  */
 public class Ant
@@ -15,7 +18,6 @@ public class Ant
   static Random random = Constants.random;
   static PathFinder pathFinder;
   static int centerX, centerY;
-  static int antsUnderground;
   static MapCell[][] world;
   static CommData data;
   Direction dir, lastDir;
@@ -44,6 +46,53 @@ public class Ant
     return AntAction.AntActionType.ENTER_NEST;
   }
 
+  AntAction chooseAction(CommData data, AntData ant, MapReader mapReader)
+  {
+    AntAction action = new AntAction(AntAction.AntActionType.STASIS);
+
+    if (data.foodSet.size() > 0)
+    {
+      FoodData nextFood;
+      int foodX;
+      int foodY;
+      String foodData;
+      for (Iterator<FoodData> i = data.foodSet.iterator(); i.hasNext(); )
+      {
+        nextFood = i.next();
+        foodX = nextFood.gridX;
+        foodY = nextFood.gridY;
+        foodData = nextFood.toString();
+        System.out.println("Found Food @ (" + foodX + "," + foodY + ") : " + foodData);
+        mapReader.updateCellFoodProximity(foodX, foodY);
+      }
+    }
+
+    if (ant.ticksUntilNextAction > 0) return action;
+
+    if (exitNest(ant, action)) return action;
+
+    if (attackEnemyAnt(ant, action)) return action;
+
+    if (goToNest(ant, action)) return action;
+
+    if (lastDir != null)
+    {
+      if (pickUpFood(ant, action)) return action;
+
+      if (pickUpWater(ant, action)) return action;
+    }
+
+    if (goToEnemyAnt(ant, action)) return action;
+
+    if (goToFood(ant, action)) return action;
+
+    if (goToGoodAnt(ant, action)) return action;
+
+    if (goExplore(ant, action)) return action;
+
+    return action;
+  }
+
   boolean exitNest(AntData ant, AntAction action)
   {
     if (ant.underground)
@@ -60,23 +109,21 @@ public class Ant
     return false;
   }
 
-  /**
-   * @todo currently going all the way to center of nest, what's the math to go just to the nest?
-   */
+  //ants do go slower because they are carrying material
   boolean goToNest(AntData ant, AntAction action)
   {
     if (hasPath || ant.carryUnits == ant.antType.getCarryCapacity())
     {
-//      System.err.println("GOING BACK HOME");
       if (hasPath && path.getPath().size() > 0)
       {
+        if (world[ant.gridX][ant.gridY].getLandType() == LandType.NEST)
+        {
+          action.type = enterNest();
+          return true;
+        }
         action.type = AntAction.AntActionType.MOVE;
         action.direction = xyCoordinateToDirection(path.getPath().get(0).getX(), path.getPath().get(0).getY(), ant.gridX, ant.gridY);
         path.getPath().remove(0);
-      }
-      else if (hasPath && path.getPath().size() == 0)
-      {
-        action.type = enterNest();
       }
       else
       {
@@ -101,7 +148,7 @@ public class Ant
         action.type = AntAction.AntActionType.PICKUP;
         action.direction = lastDir;
         action.quantity = ant.antType.getCarryCapacity() - 1;
-        //return true;
+        return true;
       }
     }
     return false;

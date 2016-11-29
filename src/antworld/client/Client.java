@@ -6,13 +6,10 @@ import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Random;
 
 import antworld.client.astar.MapReader;
 import antworld.client.astar.PathFinder;
 import antworld.common.*;
-import antworld.common.AntAction.AntActionType;
 
 public class Client
 {
@@ -26,14 +23,11 @@ public class Client
   private MapReader mapReader;
   private Socket clientSocket;
   private HashMap<AntData, Ant> dataObjectmap;
-  private Ant ant;
-  private MapCell[][] world;
 
   private Client(String host, int portNumber, TeamNameEnum team)
   {
-    mapReader = new MapReader("resources/AntTestWorld2.png");
+    mapReader = new MapReader("resources/AntTestWorld1.png");
     Ant.world = mapReader.getWorld();
-    world = mapReader.getWorld();
     Ant.pathFinder = new PathFinder(Ant.world, mapReader.getMapWidth(), mapReader.getMapHeight());
     myTeam = team;
     dataObjectmap = new HashMap<>();
@@ -227,57 +221,8 @@ public class Client
   {
     for (AntData ant : commData.myAntList)
     {
-      AntAction action = chooseAction(commData, ant);
-      ant.myAction = action;
+      ant.myAction = dataObjectmap.get(ant).chooseAction(commData, ant, mapReader);
     }
-  }
-
-  private AntAction chooseAction(CommData data, AntData ant)
-  {
-    AntAction action = new AntAction(AntActionType.STASIS);
-    this.ant = dataObjectmap.get(ant);
-
-    if(data.foodSet.size() >0)
-    {
-      FoodData nextFood;
-      int foodX;
-      int foodY;
-      String foodData;
-      for(Iterator<FoodData> i = data.foodSet.iterator(); i.hasNext();)
-      {
-        nextFood = i.next();
-        foodX = nextFood.gridX;
-        foodY = nextFood.gridY;
-        foodData = nextFood.toString();
-        System.out.println("Found Food @ (" + foodX + "," + foodY + ") : " + foodData);
-        mapReader.updateCellFoodProximity(foodX,foodY);
-      }
-    }
-
-    if (ant.ticksUntilNextAction > 0) return action;
-
-    if (this.ant.exitNest(ant, action)) return action;
-
-    if (this.ant.attackEnemyAnt(ant, action)) return action;
-
-    if (this.ant.goToNest(ant, action)) return action;
-
-    if (this.ant.lastDir != null)
-    {
-      if (this.ant.pickUpFood(ant, action)) return action;
-
-      if (this.ant.pickUpWater(ant, action)) return action;
-    }
-
-    if (this.ant.goToEnemyAnt(ant, action)) return action;
-
-    if (this.ant.goToFood(ant, action)) return action;
-
-    if (this.ant.goToGoodAnt(ant, action)) return action;
-
-    if (this.ant.goExplore(ant, action)) return action;
-
-    return action;
   }
 
   /**
