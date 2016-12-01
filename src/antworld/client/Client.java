@@ -31,10 +31,11 @@ public class Client
 
   private Client(String host, int portNumber, TeamNameEnum team)
   {
-    mapReader = new MapReader("resources/AntTestWorld2.png");
-    Ant.world = mapReader.getWorld();
+    mapReader = new MapReader("resources/AntTestWorldDiffusion.png");
     world = mapReader.getWorld();
-    Ant.pathFinder = new PathFinder(Ant.world, mapReader.getMapWidth(), mapReader.getMapHeight());
+    //Ant.world = world;
+    Ant.mapReader = mapReader;
+    Ant.pathFinder = new PathFinder(world, mapReader.getMapWidth(), mapReader.getMapHeight());
     myTeam = team;
     dataObjectmap = new HashMap<>();
     System.out.println("Starting " + team + " on " + host + ":" + portNumber + " at "
@@ -225,8 +226,10 @@ public class Client
 
   private void chooseActionsOfAllAnts(CommData commData)
   {
+    mapReader.regenerateExplorationVals();  //LATER: Should be called on seperate thread or something?
     for (AntData ant : commData.myAntList)
     {
+      mapReader.updateCellExploration(ant.gridX,ant.gridY);
       AntAction action = chooseAction(commData, ant);
       ant.myAction = action;
     }
@@ -237,6 +240,7 @@ public class Client
     AntAction action = new AntAction(AntActionType.STASIS);
     this.ant = dataObjectmap.get(ant);
 
+    /*
     if(data.foodSet.size() >0)
     {
       FoodData nextFood;
@@ -249,10 +253,11 @@ public class Client
         foodX = nextFood.gridX;
         foodY = nextFood.gridY;
         foodData = nextFood.toString();
-        System.out.println("Found Food @ (" + foodX + "," + foodY + ") : " + foodData);
-        mapReader.updateCellFoodProximity(foodX,foodY);
+        //System.out.println("Found Food @ (" + foodX + "," + foodY + ") : " + foodData);
+        //mapReader.updateCellFoodProximity(foodX,foodY);
       }
     }
+    */
 
     if (ant.ticksUntilNextAction > 0) return action;
 
@@ -264,9 +269,9 @@ public class Client
 
     if (this.ant.lastDir != null)
     {
-      if (this.ant.pickUpFood(ant, action)) return action;
+      //if (this.ant.pickUpFood(ant, action)) return action;
 
-      if (this.ant.pickUpWater(ant, action)) return action;
+      //if (this.ant.pickUpWater(ant, action)) return action;
     }
 
     if (this.ant.goToEnemyAnt(ant, action)) return action;
