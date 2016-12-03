@@ -78,12 +78,10 @@ public class Ant
 
     if (goToNest(ant, action)) return action;
 
-    if (lastDir != null)
-    {
-      if (pickUpFood(ant, action)) return action;
+    if (pickUpFood(ant, action)) return action;
 
-      if (pickUpWater(ant, action)) return action;
-    }
+    if (pickUpWater(ant, action)) return action;
+
 
     if (goToEnemyAnt(ant, action)) return action;
 
@@ -142,7 +140,7 @@ public class Ant
     return false;
   }
 
-  /*
+
   boolean pickUpWater(AntData ant, AntAction action)
   {
     if (lastDir != null)
@@ -174,7 +172,6 @@ public class Ant
     }
     return false;
   }
-  */
 
   private Direction goOppositeDirection(Direction dir)
   {
@@ -219,43 +216,44 @@ public class Ant
   {
     int explorationValue = 0;
 
-    switch(direction)
+    switch (direction)
     {
       case NORTH:
-        explorationValue += mapReader.getExplorationVal(x,y-29);
-        explorationValue += mapReader.getExplorationVal(x,y-32);
+        explorationValue += mapReader.getExplorationVal(x, y - 29);
+        explorationValue += mapReader.getExplorationVal(x, y - 32);
         break;
       case NORTHEAST:
-        explorationValue += mapReader.getExplorationVal(x+29,y-29);
-        explorationValue += mapReader.getExplorationVal(x+32,y-32);
+        explorationValue += mapReader.getExplorationVal(x + 29, y - 29);
+        explorationValue += mapReader.getExplorationVal(x + 32, y - 32);
         break;
       case NORTHWEST:
-        explorationValue += mapReader.getExplorationVal(x-29,y-29);
-        explorationValue += mapReader.getExplorationVal(x-32,y-32);
+        explorationValue += mapReader.getExplorationVal(x - 29, y - 29);
+        explorationValue += mapReader.getExplorationVal(x - 32, y - 32);
         break;
       case SOUTH:
-        explorationValue += mapReader.getExplorationVal(x,y+29);
-        explorationValue += mapReader.getExplorationVal(x,y+32);
+        explorationValue += mapReader.getExplorationVal(x, y + 29);
+        explorationValue += mapReader.getExplorationVal(x, y + 32);
         break;
       case SOUTHEAST:
-        explorationValue += mapReader.getExplorationVal(x+29,y+29);
-        explorationValue += mapReader.getExplorationVal(x+32,y+32);
+        explorationValue += mapReader.getExplorationVal(x + 29, y + 29);
+        explorationValue += mapReader.getExplorationVal(x + 32, y + 32);
         break;
       case SOUTHWEST:
-        explorationValue += mapReader.getExplorationVal(x-29,y+29);
-        explorationValue += mapReader.getExplorationVal(x-32,y+32);
+        explorationValue += mapReader.getExplorationVal(x - 29, y + 29);
+        explorationValue += mapReader.getExplorationVal(x - 32, y + 32);
         break;
       case EAST:
-        explorationValue += mapReader.getExplorationVal(x+29,y);
-        explorationValue += mapReader.getExplorationVal(x+32,y);
+        explorationValue += mapReader.getExplorationVal(x + 29, y);
+        explorationValue += mapReader.getExplorationVal(x + 32, y);
         break;
       case WEST:
-        explorationValue += mapReader.getExplorationVal(x-29,y);
-        explorationValue += mapReader.getExplorationVal(x-32,y);
+        explorationValue += mapReader.getExplorationVal(x - 29, y);
+        explorationValue += mapReader.getExplorationVal(x - 32, y);
         break;
     }
-    return explorationValue/2;
+    return explorationValue / 2;
   }
+
   /*--------------------HAVEN'T WORKED ON BELOW----------------------*/
   boolean attackEnemyAnt(AntData ant, AntAction action)
   {
@@ -282,109 +280,111 @@ public class Ant
     Direction dir;
     System.out.println("AntID = " + ant.toStringShort());
 
-    if(!randomWalk)
+    if (!randomWalk)
     {
-      int exploreValNorth = getDirectionAverageValue(ant.gridX,ant.gridY,Direction.NORTH);
+      int exploreValNorth = getDirectionAverageValue(ant.gridX, ant.gridY, Direction.NORTH);
       int bestDirection = exploreValNorth;
       dir = Direction.NORTH;
 
-      int exploreValNE = getDirectionAverageValue(ant.gridX,ant.gridY,Direction.NORTHEAST);
-      if(exploreValNE > bestDirection)
+      int exploreValNE = getDirectionAverageValue(ant.gridX, ant.gridY, Direction.NORTHEAST);
+      if (exploreValNE > bestDirection)
       {
         bestDirection = exploreValNE;
         dir = Direction.NORTHEAST;
       }
-      else if(exploreValNE == bestDirection)
+      else if (exploreValNE == bestDirection)
       {
-        if(random.nextBoolean())
+        if (random.nextBoolean())
         {
           dir = Direction.NORTHEAST;
           randomWalk = true;
         }
       }
 
-      int exploreValNW = getDirectionAverageValue(ant.gridX,ant.gridY,Direction.NORTHWEST);
-      if(exploreValNW > bestDirection)
+      int exploreValNW = getDirectionAverageValue(ant.gridX, ant.gridY, Direction.NORTHWEST);
+      if (exploreValNW > bestDirection)
       {
         bestDirection = exploreValNW;
         dir = Direction.NORTHWEST;
       }
-      else if(exploreValNW == bestDirection)
+      else if (exploreValNW == bestDirection)
       {
-        if(random.nextBoolean())
+        if (random.nextBoolean())
         {
           dir = Direction.NORTHWEST;
           randomWalk = true;
         }
       }
 
-      int exploreValSouth = getDirectionAverageValue(ant.gridX,ant.gridY,Direction.SOUTH);
-      if(exploreValSouth > bestDirection)
+      int exploreValSouth = getDirectionAverageValue(ant.gridX, ant.gridY, Direction.SOUTH);
+      if (exploreValSouth > bestDirection)
       {
         bestDirection = exploreValSouth;
         dir = Direction.SOUTH;
       }
-      else if(exploreValSouth == bestDirection)
+      else if (exploreValSouth == bestDirection)
       {
-        if(random.nextBoolean())
+        if (random.nextBoolean())
         {
           dir = Direction.SOUTH;
           randomWalk = true;
         }
       }
 
-      int exploreValSE = getDirectionAverageValue(ant.gridX,ant.gridY,Direction.SOUTHEAST);
-      if(exploreValSE > bestDirection)
+      int exploreValSE = getDirectionAverageValue(ant.gridX, ant.gridY, Direction.SOUTHEAST);
+      if (exploreValSE > bestDirection)
       {
         bestDirection = exploreValSE;
         dir = Direction.SOUTHEAST;
       }
-      else if(exploreValSE == bestDirection)
+      else if (exploreValSE == bestDirection)
       {
-        if(random.nextBoolean())
+        if (random.nextBoolean())
         {
           dir = Direction.SOUTHEAST;
           randomWalk = true;
         }
       }
 
-      int exploreValSW = getDirectionAverageValue(ant.gridX,ant.gridY,Direction.SOUTHWEST);
-      if(exploreValSW > bestDirection)
+      int exploreValSW = getDirectionAverageValue(ant.gridX, ant.gridY, Direction.SOUTHWEST);
+      if (exploreValSW > bestDirection)
       {
         bestDirection = exploreValSW;
         dir = Direction.SOUTHWEST;
       }
-      else if(exploreValSW == bestDirection)
+      else if (exploreValSW == bestDirection)
       {
-        if(random.nextBoolean())
+        if (random.nextBoolean())
         {
           dir = Direction.SOUTHWEST;
           randomWalk = true;
         }
       }
 
-      int exploreValEast = getDirectionAverageValue(ant.gridX,ant.gridY,Direction.EAST);
-      if(exploreValEast > bestDirection)
+      int exploreValEast = getDirectionAverageValue(ant.gridX, ant.gridY, Direction.EAST);
+      if (exploreValEast > bestDirection)
       {
         bestDirection = exploreValEast;
         dir = Direction.EAST;
       }
-      else if(exploreValEast == bestDirection)
+      else if (exploreValEast == bestDirection)
       {
-        if(random.nextBoolean())
+        if (random.nextBoolean())
         {
           dir = Direction.EAST;
           randomWalk = true;
         }
       }
 
-      int exploreValWest = getDirectionAverageValue(ant.gridX,ant.gridY,Direction.WEST);
-      if(exploreValWest > bestDirection)
+      int exploreValWest = getDirectionAverageValue(ant.gridX, ant.gridY, Direction.WEST);
+      if (exploreValWest > bestDirection)
       {
         dir = Direction.WEST;
       }
-      else if(exploreValWest == bestDirection) {
-        if (random.nextBoolean()) {
+      else if (exploreValWest == bestDirection)
+      {
+        if (random.nextBoolean())
+        {
           dir = Direction.WEST;
           randomWalk = true;
         }
@@ -394,10 +394,10 @@ public class Ant
     {
       randomSteps++;
 
-      if(randomSteps>=5)
+      if (randomSteps >= 5)
       {
         randomWalk = false;
-        randomSteps =0;
+        randomSteps = 0;
       }
       dir = lastDir;
     }
@@ -405,7 +405,7 @@ public class Ant
     action.type = AntAction.AntActionType.MOVE;
     action.direction = dir;
     lastDir = dir;
-    mapReader.addAntStep(ant.gridX,ant.gridY,randomWalk);   //Used for testing
+    mapReader.addAntStep(ant.gridX, ant.gridY, randomWalk);   //Used for testing
     return true;
   }
 }

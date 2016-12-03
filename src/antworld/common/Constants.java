@@ -6,8 +6,11 @@ public class Constants
 {
   public static final long VERSION = 20161120L;
   public static final int NEST_RADIUS = 20;
-  
-  public static final int INITIAL_ANT_SPAWN_COUNT = 3; //100
+
+  /**
+   * @todo default is 100
+   */
+  public static final int INITIAL_ANT_SPAWN_COUNT = 10;
   public static final int INITIAL_NEST_WATER_UNITS = 100;
   public static final int TIME_STEP_MSEC = 150; // default is 250
 

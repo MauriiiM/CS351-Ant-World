@@ -20,15 +20,14 @@ public class Client
   private ObjectOutputStream outputStream = null;
   private boolean isConnected = false;
   private NestNameEnum myNestName = null;
-  private MapReader mapReader;
   private Socket clientSocket;
   private HashMap<AntData, Ant> dataObjectmap;
 
   private Client(String host, int portNumber, TeamNameEnum team)
   {
-    mapReader = new MapReader("resources/AntTestWorld1.png");
-    Ant.world = mapReader.getWorld();
-    Ant.pathFinder = new PathFinder(Ant.world, mapReader.getMapWidth(), mapReader.getMapHeight());
+    Ant.mapReader = new MapReader("resources/AntTestWorld1.png");
+    Ant.world = Ant.mapReader.getWorld();
+    Ant.pathFinder = new PathFinder(Ant.world, Ant.mapReader.getMapWidth(), Ant.mapReader.getMapHeight());
     myTeam = team;
     dataObjectmap = new HashMap<>();
     System.out.println("Starting " + team + " on " + host + ":" + portNumber + " at "
@@ -219,13 +218,11 @@ public class Client
 
   private void chooseActionsOfAllAnts(CommData commData)
   {
-    mapReader.regenerateExplorationVals();  //LATER: Should be called on seperate thread or something?
+    Ant.mapReader.regenerateExplorationVals();  //LATER: Should be called on seperate thread or something?
     for (AntData ant : commData.myAntList)
     {
-      ant.myAction = dataObjectmap.get(ant).chooseAction(commData, ant, mapReader);
-      mapReader.updateCellExploration(ant.gridX,ant.gridY);
-      AntAction action = chooseAction(commData, ant);
-      ant.myAction = action;
+      ant.myAction = dataObjectmap.get(ant).chooseAction(commData, ant, Ant.mapReader);
+      Ant.mapReader.updateCellExploration(ant.gridX, ant.gridY);
     }
   }
 
