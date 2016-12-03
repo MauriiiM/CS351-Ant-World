@@ -219,9 +219,13 @@ public class Client
 
   private void chooseActionsOfAllAnts(CommData commData)
   {
+    mapReader.regenerateExplorationVals();  //LATER: Should be called on seperate thread or something?
     for (AntData ant : commData.myAntList)
     {
       ant.myAction = dataObjectmap.get(ant).chooseAction(commData, ant, mapReader);
+      mapReader.updateCellExploration(ant.gridX,ant.gridY);
+      AntAction action = chooseAction(commData, ant);
+      ant.myAction = action;
     }
   }
 

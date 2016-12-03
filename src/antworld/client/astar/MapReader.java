@@ -1,17 +1,19 @@
 package antworld.client.astar;
 
+import antworld.client.GradientType;
 import antworld.client.MapCell;
 import antworld.common.LandType;
-import antworld.server.Cell;
-
 import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.awt.image.PackedColorModel;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Iterator;
+import static antworld.client.GradientType.EXPLORE;
+import static antworld.client.GradientType.FOOD;
 
 /**
  * Reads a map and creates an array of Cells to represent the world
@@ -21,19 +23,32 @@ import java.util.ArrayList;
  */
 public class MapReader
 {
-
   private String imagePath = null;  //"resources/AntTestWorld4.png"
   private BufferedImage map = null;
   private MapCell[][] world;
   private int mapWidth;
   private int mapHeight;
-  private static final int DIFFUSIONCOEFFICIENT = 2;  //Lowering the value will reduce diffusion rate
+  private static final int DIFFUSIONCOEFFICIENT = 30;  //Lowering the value will reduce diffusion rate
+  private static final int EXPLORATIONRADIUS = 30;
+  private static final int EXPLORATIONVALUE = 1000;
+  private static final int EXPLORATIONREGENVAL = 15;
+  private static final int FOODRADIUS = 30;
+  private static final int FOODVALUE = 1000;
+  private DiffusionGradient explorationGradient;
+  private DiffusionGradient foodGradient;
+  private HashSet<MapCell> exploredRecently;
+
+  ArrayList<AntStep> antSteps = new ArrayList<>();
 
   public MapReader(String mapPath)
   {
     this.imagePath = mapPath;
     map = loadMap(imagePath);
     world = readMap(map);
+    exploredRecently = new HashSet<>();
+    explorationGradient = new DiffusionGradient(EXPLORATIONRADIUS,EXPLORATIONVALUE,DIFFUSIONCOEFFICIENT);
+    foodGradient = new DiffusionGradient(FOODRADIUS, FOODVALUE, DIFFUSIONCOEFFICIENT);
+    //drawMap();  //Used for testing
   }
 
   private BufferedImage loadMap(String imagePath)
@@ -94,6 +109,8 @@ public class MapReader
     return world;
   }
 
+  // I think this needs to be synchronized so that the ants don't read the world while any values are being written to.
+  // I left it here because it's still being used by pathfinder
   public MapCell[][] getWorld()
   {
     return world;
@@ -111,363 +128,224 @@ public class MapReader
 
   public void updateCellFoodProximity(int foodX, int foodY)
   {
-    createDiffusionGradient(foodX,foodY,35,9000);
+    writeGradientToMap(foodX,foodY,FOODRADIUS,foodGradient.getGradient(),GradientType.FOOD);
+  }
+
+  public void updateCellExploration(int explorerX, int explorerY)
+  {
+    writeGradientToMap(explorerX,explorerY,EXPLORATIONRADIUS,explorationGradient.getGradient(),GradientType.EXPLORE);
+  }
+
+  public int getExplorationVal(int x, int y)
+  {
+    if(x < 0 || x >= mapWidth || y < 0 || y >= mapHeight)
+    {
+      return 0;
+    }
+
+    synchronized (world)
+    {
+      return world[x][y].getExplorationVal();
+    }
+  }
+
+  //Regenerates the exploration value of MapCells that have been explored recently
+  public void regenerateExplorationVals()   //Call every frame
+  {
+    if(exploredRecently.size() > 0)
+    {
+      synchronized (world)
+      {
+
+        for(Iterator<MapCell> i = exploredRecently.iterator(); i.hasNext();)
+        {
+          MapCell nextCell = i.next();
+          int currentVal = nextCell.getExplorationVal();
+          if(currentVal < (EXPLORATIONVALUE-EXPLORATIONREGENVAL)) //1000-15 = 985
+          {
+            nextCell.setExplorationVal(currentVal+EXPLORATIONREGENVAL);
+          }
+          else  //Else cell has regenerated, remove it.
+          {
+            i.remove();
+          }
+        }
+      }
+    }
   }
 
   /**
    * Writes the diffusion gradient to the map by updating cells with a new food proximity value
    * @param x - target x coord of center of gradient
    * @param y - target y coord of center of gradient
-   * @param diameter - the diameter of the diffusion gradient
+   * @param radius - the radius of the diffusion gradient
    * @param diffusionValues - the array of diffusion values
    */
-  private void writeGradientToMap(int x, int y, int diameter, int[][] diffusionValues)
-  {
-    int radius = diameter/2;
-    int nextX;
-    int nextY;
-    int nextVal;
+  private void writeGradientToMap(int x, int y, int radius, int[][] diffusionValues,GradientType type) {
 
-    for(int i=0;i<diameter;i++)
-    {
+    synchronized (world) {
+      int diameter = (radius*2) +1;
+      int nextX;
+      int nextY;
+      int nextVal;
 
-      if(i<radius)
-      {
-        nextX = x-(radius-i);
+      for (int i = 0; i < diameter; i++) {
+
+        if (i < radius) {
+          nextX = x - (radius - i);
+        } else if (i > radius) {
+          nextX = x + (i - radius);
+        } else {
+          nextX = x;
+        }
+
+        for (int j = 0; j < diameter; j++) {
+
+
+          if (j < radius) {
+            nextY = y - (radius - j);
+          } else if (j > radius) {
+            nextY = y + (j - radius);
+          } else {
+            nextY = y;
+          }
+
+          if (nextX < 0 || nextX >= mapWidth || nextY < 0 || nextY >= mapHeight) {
+            //System.err.println("INDEX OUT OF BOUND!");
+            continue;
+          }
+
+          nextVal = diffusionValues[i][j];
+
+          switch (type) {
+            case FOOD:
+              nextVal *= FOOD.polarity();
+              world[nextX][nextY].setFoodProximityVal(nextVal);
+              break;
+            case EXPLORE:
+              exploredRecently.add(world[nextX][nextY]);  //Add the new cell to exploredRecently to regenerate its exploration over time
+              nextVal *= EXPLORE.polarity();
+              //System.out.println("nextWorldVal = " + world[nextX][nextY].getExplorationVal());
+              nextVal = world[nextX][nextY].getExplorationVal() + nextVal;
+              //System.out.println("nextVal = " + nextVal);
+              if (nextVal < 0) {
+                nextVal = 0;
+
+              }
+              world[nextX][nextY].setExplorationVal(nextVal);
+              break;
+          }
+
+          //System.out.println("i="+i+" || j="+j + " || diameter=" + diameter);
+          //System.out.println("Setting world["+nextX+"]["+nextY+"] = " + nextVal);
+        }
       }
-      else if(i>radius)
+    }
+  }
+
+  //Used for testing exploration
+  private class AntStep
+  {
+    int x;
+    int y;
+    boolean random;
+    public AntStep(int x, int y, boolean random)
+    {
+      this.x = x;
+      this.y = y;
+      this.random = random;
+    }
+  }
+
+  //Used for testing exploration
+  public void addAntStep(int x, int y, boolean random)
+  {
+    AntStep newStep = new AntStep(x,y,random);
+    antSteps.add(newStep);
+    if(antSteps.size()>2000)
+    {
+      drawAntPath();
+    }
+  }
+
+  //Used for testing, can be deleted later.
+  private void drawAntPath()
+  {
+    System.out.println("Drawing Ant Path Map:");
+    BufferedImage pathMap = new BufferedImage(mapWidth, mapHeight, BufferedImage.TYPE_INT_ARGB);
+    AntStep nextStep;
+    Color random = new Color(255,0,0,255);
+    Color explore = new Color(0,0,255,255);
+
+    for (int i = 0; i < antSteps.size(); i++)
+    {
+      nextStep = antSteps.get(i);
+
+      if(nextStep.random)
       {
-        nextX = x+(i-radius);
+        pathMap.setRGB(nextStep.x,nextStep.y,random.getRGB());
       }
       else
       {
-        nextX = x;
-      }
-
-      for (int j = 0; j < diameter; j++)
-      {
-
-
-        if(j<radius)
-        {
-          nextY = y-(radius-j);
-        }
-        else if(j>radius)
-        {
-          nextY = y+(j-radius);
-        }
-        else
-        {
-          nextY = y;
-        }
-
-        nextVal = diffusionValues[i][j];
-        world[nextX][nextY].setFoodProximityVal(nextVal);
-        //System.out.println("i="+i+" || j="+j + " || diameter=" + diameter);
-        //System.out.println("Setting world["+nextX+"]["+nextY+"] = " + nextVal);
+        pathMap.setRGB(nextStep.x,nextStep.y,explore.getRGB());
       }
     }
-  }
-
-  /**
-   * Creates a diffusion gradient of radius r, from an x,y coordinate, with goal value goal
-   * I think radius must be even
-   * NOTE: Might be worth experimenting on creating a cone towards another coord, instead creating an entire circle
-   *  It could be good to allow gradients to blend together.
-   *  Might be a good idea to integrate the values into the map cells tighter
-   *  Could be adapted to make ants explore efficiently
-   *  Small radius' can be used for fighting/tracking enemy ants
-   */
-  private void createDiffusionGradient(int x, int y, int radius, int goalValue)
-  {
-    int diameter = (radius*2) + 1;  //One is added to the diameter so that there is a definitive center to the gradient.
-    int[][] diffusionValues = new int[diameter][diameter];  //This will store the diffusion gradient
-    diffusionValues[radius][radius] = goalValue;  //The gradient center's diffusion value equals the goal
-    diffusionValues = expandDiffusionGradient(radius,radius,diameter,diffusionValues);
-    //printGradient(diameter,diffusionValues);
-    writeGradientToMap(x,y,diameter,diffusionValues);
-  }
-
-  /**
-   *Grows the diffusion gradient until it reaches the proper diameter.
-   * @param x - the gradient center x coordinate
-   * @param y - the gradient center y coordinate
-   * @param diameter - the desired diameter of the diffusion gradient (Always odd, always greater than 1)
-   * @param diffusionValues - the array of diffusion values stored from the initial/last iteration (only read from)
-   */
-  private int[][] expandDiffusionGradient(int x, int y, int diameter, int[][] diffusionValues)
-  {
-    int[][] updatedDiffValues;  //This will store the next iteration as the gradient expands
-
-    for(int i=3;i<diameter+1;i+=2)
+    try
     {
-      updatedDiffValues = new int[diameter][diameter];
-      diffusionValues = updateGradientRing(x,y,i,diffusionValues,updatedDiffValues, true);  //Expand the gradient diameter by one cell
-
-      if(i>3) //If the ring has expanded beyond the first ring surrounding the center, the inner ring must be updated too.
-      {
-        int[][] lastDiffValues = diffusionValues.clone(); //Create a template to read later (shallow)
-        updatedDiffValues = new int[diameter][diameter];
-        diffusionValues = updateGradientRing(x,y,i-2,diffusionValues,updatedDiffValues, false);  //Update the old outer diameter ring
-        diffusionValues = mergeGradientInnerRing(i,diffusionValues,lastDiffValues);
-      }
+      ImageIO.write(pathMap,"PNG",new File("c:\\Users\\John\\Desktop\\antWorldTest\\antPathMap3.PNG"));
+    } catch (IOException ie){
+      ie.printStackTrace();
     }
-
-    return diffusionValues;
+    System.exit(2);
   }
-
-  /**
-   * Combines the updated diffusion value of the second to last outer ring with the rest of the gradient
-   * @param diameter - the diameter of the gradient
-   * @param diffusionValues - the collection of diffusion values that make up the gradient
-   * @param lastDiffVals - the updated average diffusion values of the second to last outer ring
-   * @return - the merged diffusion values.
-   */
-  private int[][] mergeGradientInnerRing(int diameter, int[][] diffusionValues, int[][] lastDiffVals)
-  {
-    for(int i=0;i<diameter;i++)
-    {
-      for(int j=0;j<diameter;j++)
-      {
-        if(diffusionValues[i][j] != 0)
-        {
-          lastDiffVals[i][j] = diffusionValues[i][j];
-        }
-      }
-    }
-
-    return lastDiffVals;
-  }
-
-  /**
-   *Updates a ring of the diffusion gradient by updating the cells a certain distance away from the center.
-   * @param x - the gradient center x coordinate
-   * @param y - the gradient center y coordinate
-   * @param diameter - the diameter of the next iteration of the gradient (Always odd, always greater than 1)
-   * @param diffusionValues - the array of diffusion values from the last iteration (only read from)
-   * @param updatedDiffValues - the array of the next iteration of diffusion values (written to)
-   */
-
-  private int[][] updateGradientRing(int x, int y, int diameter, int[][] diffusionValues, int[][] updatedDiffValues, boolean outerRing)
-  {
-    int centralDistance = (diameter/2); //Distance from the center of the gradient
-
-    for(int i=0;i<centralDistance+1;i++)  //x values
-    {
-      for(int j=0;j<centralDistance+1;j++)  //y values
-      {
-
-        if(i<centralDistance && j<centralDistance )  //Inner region of gradient, copy it to the updated diffusion values array
-        {
-
-          if(i==0 && j==0)
-          {
-            updatedDiffValues[x][y] = diffusionValues[x][y];
-          }
-          else
-          {
-            if(i<j)
-            {
-              updatedDiffValues[x+i][y+j] = diffusionValues[x+i][y+j];
-              updatedDiffValues[x+i][y-j] = diffusionValues[x+i][y-j];
-
-              if(i>0)
-              {
-                updatedDiffValues[x-i][y+j] = diffusionValues[x+i][y+j];
-                updatedDiffValues[x-i][y-j] = diffusionValues[x+i][y-j];
-              }
-            }
-            else if(i>j)
-            {
-              updatedDiffValues[x+i][y+j] = diffusionValues[x+i][y+j];
-              updatedDiffValues[x-i][y+j] = diffusionValues[x-i][y+j];
-
-              if(j>0)
-              {
-                updatedDiffValues[x+i][y-j] = diffusionValues[x+i][y-j];
-                updatedDiffValues[x-i][y-j] = diffusionValues[x-i][y-j];
-              }
-            }
-            else  //i = j
-            {
-              updatedDiffValues[x+i][y+j] = diffusionValues[x+i][y+j];
-              updatedDiffValues[x-i][y-j] = diffusionValues[x-i][y-j];
-              updatedDiffValues[x+i][y-j] = diffusionValues[x+i][y-j];
-              updatedDiffValues[x-i][y+j] = diffusionValues[x-i][y+j];
-            }
-          }
-        }
-        else
-        {
-          if(i<j)
-          {
-            updateCellDiffusionValue(x+i,y+j, diffusionValues, updatedDiffValues, outerRing);
-            updateCellDiffusionValue(x+i,y-j, diffusionValues, updatedDiffValues, outerRing);
-            if(i>0)
-            {
-              updateCellDiffusionValue(x-i,y+j, diffusionValues, updatedDiffValues, outerRing);
-              updateCellDiffusionValue(x-i,y-j, diffusionValues, updatedDiffValues, outerRing);
-            }
-          }
-          else if(i>j)
-          {
-            updateCellDiffusionValue(x+i,y+j, diffusionValues, updatedDiffValues, outerRing);
-            updateCellDiffusionValue(x-i,y+j, diffusionValues, updatedDiffValues, outerRing);
-            if(j>0)
-            {
-              updateCellDiffusionValue(x+i,y-j, diffusionValues, updatedDiffValues, outerRing);
-              updateCellDiffusionValue(x-i,y-j, diffusionValues, updatedDiffValues, outerRing);
-            }
-          }
-          else  //i = j
-          {
-            updateCellDiffusionValue(x+i,y+j, diffusionValues, updatedDiffValues, outerRing);
-            updateCellDiffusionValue(x-i,y-j, diffusionValues, updatedDiffValues, outerRing);
-            updateCellDiffusionValue(x+i,y-j, diffusionValues, updatedDiffValues, outerRing);
-            updateCellDiffusionValue(x-i,y+j, diffusionValues, updatedDiffValues, outerRing);
-          }
-        }
-      }
-    }
-
-    return updatedDiffValues; //Updated difference value array complete, return to store it as the new template for the next update.
-  }
-
-  /**
-   * Updates a single cell's diffusion value by taking the average of the diffusion values in the cell's Moore's neighborhood
-   * @param x - the cell's x coordinate
-   * @param y - the cell's y coordinate
-   * @param diffusionValues - the array of diffusion values from the last iteration (only read from)
-   * @param updatedDiffValues - the array of the next iteration of diffusion values (written to)
-   * @param outerRing - Boolean value indicating if this is the outer most ring of the gradient
-   */
-  private void updateCellDiffusionValue(int x, int y, int[][] diffusionValues, int[][] updatedDiffValues, boolean outerRing)
-  {
-    int neighborValSum = 0;
-    int cellDiffusionVal;
-    int arraySize = diffusionValues[0].length;
-
-    if(outerRing) //Checks which cells will have neighbors to avoid IndexOutOfBounds errors
-    {
-      boolean neighborsNorth = false;
-      boolean neighborsSouth = false;
-      boolean neighborsEast = false;
-      boolean neighborsWest = false;
-
-      if(y<arraySize-2)
-        neighborsNorth = true;
-
-      if(y>0)
-        neighborsSouth = true;
-
-      if(x<arraySize-2)
-        neighborsEast = true;
-
-      if(x>0)
-        neighborsWest = true;
-
-      if(neighborsNorth)
-      {
-        neighborValSum += diffusionValues[x][y+1];  //N neighbor
-
-        if(neighborsEast)
-          neighborValSum += diffusionValues[x+1][y+1];  //NE neighbor
-
-        if(neighborsWest)
-          neighborValSum += diffusionValues[x-1][y+1];  //NW neighbor
-      }
-
-      if(neighborsSouth)
-      {
-        neighborValSum += diffusionValues[x][y-1];  //S neighbor
-
-        if(neighborsEast)
-          neighborValSum += diffusionValues[x+1][y-1];  //SE neighbor
-
-        if(neighborsWest)
-          neighborValSum += diffusionValues[x-1][y-1];  //SW neighbor
-      }
-
-      if(neighborsEast)
-        neighborValSum += diffusionValues[x+1][y];  //E neighbor
-
-      if(neighborsWest)
-        neighborValSum += diffusionValues[x-1][y];  //W neighbor
-    }
-    else
-    {
-      neighborValSum += diffusionValues[x][y+1];  //N neighbor
-      neighborValSum += diffusionValues[x+1][y+1];  //NE neighbor
-      neighborValSum += diffusionValues[x-1][y+1];  //NW neighbor
-      neighborValSum += diffusionValues[x][y-1];  //S neighbor
-      neighborValSum += diffusionValues[x+1][y-1];  //SE neighbor
-      neighborValSum += diffusionValues[x-1][y-1];  //SW neighbor
-      neighborValSum += diffusionValues[x+1][y];  //E neighbor
-      neighborValSum += diffusionValues[x-1][y];  //W neighbor
-    }
-
-    cellDiffusionVal = neighborValSum/DIFFUSIONCOEFFICIENT;
-    updatedDiffValues[x][y] = cellDiffusionVal;
-  }
-
-  /*
-  public static void main(String[] args)
-  {
-    MapReader test = new MapReader("resources/AntTestWorld2.png");
-    test.createDiffusionGradient(150,150,30,9000);
-    test.drawGradient();
-  }
-
 
   //Used for testing, can be deleted later.
-  private void drawGradient()
+  private void drawMap()
   {
-    System.out.println("Drawing Gradient:");
+    System.out.println("Drawing Map:");
     BufferedImage gradientMap = new BufferedImage(mapWidth, mapHeight, BufferedImage.TYPE_INT_ARGB);
     Color nextColor;
-    int nextVal;
-    int colorVal;
+    LandType nextLandType;
+    Color grass = new Color(0,255,0,255);
+    Color water = new Color(0,0,255,255);
+    Color nest = new Color(255,255,0,255);
 
     for (int i = 0; i < mapWidth; i++)
     {
       for(int j=0;j<mapHeight;j++)
       {
-        nextVal = world[i][j].getFoodProximityVal();
-        if(nextVal>0)
+        nextLandType = world[i][j].getLandType();
+        switch(nextLandType)
         {
-          colorVal = 255/nextVal;
-          nextColor = new Color(255,colorVal,colorVal,255);
-          gradientMap.setRGB(i,j,nextColor.getRGB());
-          System.out.println("Colorval = " + colorVal);
+          case WATER:
+            gradientMap.setRGB(i,j,water.getRGB());
+            break;
+          case NEST:
+            gradientMap.setRGB(i,j,nest.getRGB());
+            break;
+          case GRASS:
+            gradientMap.setRGB(i,j,grass.getRGB());
+            break;
         }
-        else
-        {
-          //colorVal = 255;
-        }
-
-        //nextColor = new Color(255,colorVal,colorVal,255);
-        //gradientMap.setRGB(i,j,nextColor.getRGB());
       }
     }
     try
     {
-      ImageIO.write(gradientMap,"PNG",new File("c:\\Users\\John\\Desktop\\antWorldTest\\gradientCoeff1.PNG"));
+      ImageIO.write(gradientMap,"PNG",new File("c:\\Users\\John\\Desktop\\antWorldTest\\drawMapTest0.PNG"));
     } catch (IOException ie){
       ie.printStackTrace();
     }
   }
 
-  //Used to print the diffusion values of the gradient
-  private void printGradient(int diameter, int[][] diffusionValues)
+  /* Used for testing
+  public static void main(String[] args)
   {
-    System.out.println("PRINTING DIFFUSION VALUES");
-    for(int i=0;i<diameter;i++)
-    {
-      for(int j=0;j<diameter;j++)
-      {
-        System.out.println("diffusionValues[" + i + "][" + j + "] = " + diffusionValues[i][j]);
-      }
-    }
+    MapReader test = new MapReader("resources/AntTestWorld2.png");
+    //test.createDiffusionGradient(150,150,1,500,GradientType.EXPLORE);
+    //test.updateCellExploration(150,150);
+    //test.drawGradient();
+    DiffusionGradient testGrad = new DiffusionGradient(30,1024,30);
+    test.writeGradientToMap(150,150,7,testGrad.getGradient(),GradientType.FOOD);
   }
   */
 }
