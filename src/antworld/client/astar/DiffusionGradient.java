@@ -53,7 +53,7 @@ public class DiffusionGradient
   {
     gradient[radius][radius] = goalValue;  //The gradient center's diffusion value equals the goal
     gradient = expandDiffusionGradient(radius,radius);
-    //printGradient();    //Used for testing
+    printGradient();    //Used for testing
   }
 
   /**
@@ -179,6 +179,8 @@ public class DiffusionGradient
     double roughDiffVal;
     int cellDiffusionVal;
     int radius = diameter/2;
+
+    //NOTE: Might need to reimplement so that it takes the sum of its neighbors instead of the distance from the center. Otherwise ants might not collaborate.
 
     roughDiffVal = goalValue-(diffusionCoefficient*radius);
     cellDiffusionVal = (int) roughDiffVal;

@@ -3,6 +3,8 @@ package antworld.client.astar;
 import antworld.client.GradientType;
 import antworld.client.MapCell;
 import antworld.common.LandType;
+import antworld.server.Cell;
+
 import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
@@ -25,7 +27,8 @@ public class MapReader
 {
   private String imagePath = null;  //"resources/AntTestWorld4.png"
   private BufferedImage map = null;
-  private MapCell[][] world;
+  private MapCell[][] world;  //This is used by map reader to store information
+  private Cell[][] geoMap;  //This is used by pathfinder to read geographical information
   private int mapWidth;
   private int mapHeight;
   private static final int DIFFUSIONCOEFFICIENT = 30;  //Lowering the value will reduce diffusion rate
@@ -44,7 +47,7 @@ public class MapReader
   {
     this.imagePath = mapPath;
     map = loadMap(imagePath);
-    world = readMap(map);
+    readMap(map);
     exploredRecently = new HashSet<>();
     explorationGradient = new DiffusionGradient(EXPLORATIONRADIUS,EXPLORATIONVALUE,DIFFUSIONCOEFFICIENT);
     foodGradient = new DiffusionGradient(FOODRADIUS, FOODVALUE, DIFFUSIONCOEFFICIENT);
@@ -70,11 +73,12 @@ public class MapReader
     return map;
   }
 
-  private MapCell[][] readMap(BufferedImage map)
+  private void readMap(BufferedImage map)
   {
     mapWidth = map.getWidth();
     mapHeight = map.getHeight();
-    MapCell[][] world = new MapCell[mapWidth][mapHeight];
+    world = new MapCell[mapWidth][mapHeight];
+    geoMap = new Cell[mapWidth][mapHeight];
     for (int x = 0; x < mapWidth; x++)
     {
       for (int y = 0; y < mapHeight; y++)
@@ -104,16 +108,14 @@ public class MapReader
         // ", landType="+landType
         // +" height="+height);
         world[x][y] = new MapCell(landType, height, x, y);
+        geoMap[x][y] = new Cell(landType,height,x,y);
       }
     }
-    return world;
   }
 
-  // I think this needs to be synchronized so that the ants don't read the world while any values are being written to.
-  // I left it here because it's still being used by pathfinder
-  public MapCell[][] getWorld()
+  public Cell[][] getGeoMap()
   {
-    return world;
+    return geoMap;
   }
 
   public int getMapWidth()
@@ -262,7 +264,7 @@ public class MapReader
   {
     AntStep newStep = new AntStep(x,y,random);
     antSteps.add(newStep);
-    if(antSteps.size()>2000)
+    if(antSteps.size()>6000)
     {
       drawAntPath();
     }
@@ -292,7 +294,7 @@ public class MapReader
     }
     try
     {
-      ImageIO.write(pathMap,"PNG",new File("c:\\Users\\John\\Desktop\\antWorldTest\\antPathMap3.PNG"));
+      ImageIO.write(pathMap,"PNG",new File("c:\\Users\\John\\Desktop\\antWorldTest\\antPathMap4.PNG"));
     } catch (IOException ie){
       ie.printStackTrace();
     }
@@ -337,7 +339,8 @@ public class MapReader
     }
   }
 
-  /* Used for testing
+  /*
+  // Used for testing
   public static void main(String[] args)
   {
     MapReader test = new MapReader("resources/AntTestWorld2.png");

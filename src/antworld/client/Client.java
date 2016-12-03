@@ -6,10 +6,15 @@ import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Random;
 
 import antworld.client.astar.MapReader;
 import antworld.client.astar.PathFinder;
 import antworld.common.*;
+import antworld.common.AntAction.AntActionType;
+import antworld.server.Cell;
 
 public class Client
 {
@@ -20,16 +25,26 @@ public class Client
   private ObjectOutputStream outputStream = null;
   private boolean isConnected = false;
   private NestNameEnum myNestName = null;
+  private MapReader mapReader;
   private Socket clientSocket;
   private HashMap<AntData, Ant> dataObjectmap;
+  private Ant ant;
+  private Cell[][] geoMap;
+  private static final int MINFOODRESPONSE = 200; //If an ant is within 200 cells of a food site, it will navigate to the food site
+  private FoodManager foodManager;
+  private PathFinder pathfinder;
+
 
   private Client(String host, int portNumber, TeamNameEnum team)
   {
-    Ant.mapReader = new MapReader("resources/AntTestWorld1.png");
-    Ant.world = Ant.mapReader.getWorld();
-    Ant.pathFinder = new PathFinder(Ant.world, Ant.mapReader.getMapWidth(), Ant.mapReader.getMapHeight());
+    mapReader = new MapReader("resources/AntTestWorldDiffusion.png");
+    geoMap = mapReader.getGeoMap();
+    pathfinder = new PathFinder(geoMap,mapReader.getMapWidth(),mapReader.getMapHeight());
+    Ant.mapReader = mapReader;
+    Ant.pathFinder = pathfinder;
     myTeam = team;
     dataObjectmap = new HashMap<>();
+    //foodManager = new FoodManager(dataObjectmap,pathfinder);
     System.out.println("Starting " + team + " on " + host + ":" + portNumber + " at "
         + System.currentTimeMillis());
 
@@ -218,12 +233,46 @@ public class Client
 
   private void chooseActionsOfAllAnts(CommData commData)
   {
-    Ant.mapReader.regenerateExplorationVals();  //LATER: Should be called on seperate thread or something?
+    mapReader.regenerateExplorationVals();  //LATER: Should be called on seperate thread or something?
+    foodManager.readFoodSet(commData.foodSet);
+
     for (AntData ant : commData.myAntList)
     {
-      ant.myAction = dataObjectmap.get(ant).chooseAction(commData, ant, Ant.mapReader);
-      Ant.mapReader.updateCellExploration(ant.gridX, ant.gridY);
+      mapReader.updateCellExploration(ant.gridX,ant.gridY);
+      AntAction action = chooseAction(commData, ant);
+      ant.myAction = action;
     }
+  }
+
+  private AntAction chooseAction(CommData data, AntData ant)
+  {
+    AntAction action = new AntAction(AntActionType.STASIS);
+    this.ant = dataObjectmap.get(ant);
+
+    if (ant.ticksUntilNextAction > 0) return action;
+
+    if (this.ant.exitNest(ant, action)) return action;
+
+    if (this.ant.attackEnemyAnt(ant, action)) return action;
+
+    if (this.ant.goToNest(ant, action)) return action;
+
+    if (this.ant.lastDir != null)
+    {
+      //if (this.ant.pickUpFood(ant, action)) return action;
+
+      //if (this.ant.pickUpWater(ant, action)) return action;
+    }
+
+    if (this.ant.goToEnemyAnt(ant, action)) return action;
+
+    if (this.ant.goToFood(ant, action)) return action;
+
+    if (this.ant.goToGoodAnt(ant, action)) return action;
+
+    if (this.ant.goExplore(ant, action)) return action;
+
+    return action;
   }
 
   /**

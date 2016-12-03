@@ -4,13 +4,10 @@ import antworld.client.astar.MapReader;
 import antworld.client.astar.Path;
 import antworld.client.astar.PathFinder;
 import antworld.common.*;
-import antworld.server.Cell;
 
-import java.util.Iterator;
 import java.util.Random;
 
 /**
- * Each servers ant data is mapped to an Ant object
  * Created by mauricio on 11/23/16.
  */
 public class Ant
@@ -18,20 +15,24 @@ public class Ant
   static Random random = Constants.random;
   static PathFinder pathFinder;
   static int centerX, centerY;
+  static int antsUnderground;
   static MapCell[][] world;
   static MapReader mapReader;
   static CommData data;
   Direction dir, lastDir;
-  AntData ant;
+  AntData antData;
   //  AntAction action;
   boolean hasPath = false;
   Path path;
+  int pathStepCount;
   private boolean randomWalk = false;
   private int randomSteps = 0;
+  private Goal currentGoal = Goal.EXPLORE;
+  FoodObjective foodObjective = null;
 
   Ant(AntData ant)
   {
-    this.ant = ant;
+    this.antData = ant;
   }
 
   //only called when ant's in the nest and will be true
@@ -44,54 +45,8 @@ public class Ant
 
   AntAction.AntActionType enterNest()
   {
-    path = null;
-    hasPath = false;
+    endPath();
     return AntAction.AntActionType.ENTER_NEST;
-  }
-
-  AntAction chooseAction(CommData data, AntData ant, MapReader mapReader)
-  {
-    AntAction action = new AntAction(AntAction.AntActionType.STASIS);
-
-    if (data.foodSet.size() > 0)
-    {
-      FoodData nextFood;
-      int foodX;
-      int foodY;
-      String foodData;
-      for (Iterator<FoodData> i = data.foodSet.iterator(); i.hasNext(); )
-      {
-        nextFood = i.next();
-        foodX = nextFood.gridX;
-        foodY = nextFood.gridY;
-        foodData = nextFood.toString();
-        System.out.println("Found Food @ (" + foodX + "," + foodY + ") : " + foodData);
-        mapReader.updateCellFoodProximity(foodX, foodY);
-      }
-    }
-
-    if (ant.ticksUntilNextAction > 0) return action;
-
-    if (exitNest(ant, action)) return action;
-
-    if (attackEnemyAnt(ant, action)) return action;
-
-    if (goToNest(ant, action)) return action;
-
-    if (pickUpFood(ant, action)) return action;
-
-    if (pickUpWater(ant, action)) return action;
-
-
-    if (goToEnemyAnt(ant, action)) return action;
-
-    if (goToFood(ant, action)) return action;
-
-    if (goToGoodAnt(ant, action)) return action;
-
-    if (goExplore(ant, action)) return action;
-
-    return action;
   }
 
   boolean exitNest(AntData ant, AntAction action)
@@ -110,37 +65,39 @@ public class Ant
     return false;
   }
 
-  //ants do go slower because they are carrying material
+  /**
+   * @todo currently going all the way to center of nest, what's the math to go just to the nest?
+   */
   boolean goToNest(AntData ant, AntAction action)
   {
-    if (hasPath || ant.carryUnits == ant.antType.getCarryCapacity())
+    if (currentGoal == Goal.RETURNTONEST)
     {
-      if (hasPath && path.getPath().size() > 0)
+      //System.err.println("GOING BACK HOME");
+      if(hasPath && pathStepCount < path.getPath().size()-1)
       {
-        if (world[ant.gridX][ant.gridY].getLandType() == LandType.NEST)
-        {
-          action.type = enterNest();
-          return true;
-        }
         action.type = AntAction.AntActionType.MOVE;
-        action.direction = xyCoordinateToDirection(path.getPath().get(0).getX(), path.getPath().get(0).getY(), ant.gridX, ant.gridY);
-        path.getPath().remove(0);
+        action.direction = xyCoordinateToDirection(path.getPath().get(pathStepCount).getX(), path.getPath().get(pathStepCount).getY(), ant.gridX, ant.gridY);
+        pathStepCount ++;
+      }
+      else if (hasPath && pathStepCount == path.getPath().size()-1)
+      {
+        action.type = enterNest();
+        endPath();
       }
       else
       {
         System.err.println(centerX + "\ty=" + centerY);
-        path = pathFinder.findPath(ant.gridX, ant.gridY, centerX, centerY);
-        hasPath = true;
-        action.direction = xyCoordinateToDirection(path.getPath().get(0).getX(), path.getPath().get(0).getY(), ant.gridX, ant.gridY);
+        pathFinder.requestPath(this,ant.gridX, ant.gridY, centerX, centerY);
+        action.direction = xyCoordinateToDirection(path.getPath().get(pathStepCount).getX(), path.getPath().get(pathStepCount).getY(), ant.gridX, ant.gridY);
         action.type = AntAction.AntActionType.MOVE;
-        path.getPath().remove(0);
+        pathStepCount ++;
       }
       return true;
     }
     return false;
   }
 
-
+  /*
   boolean pickUpWater(AntData ant, AntAction action)
   {
     if (lastDir != null)
@@ -151,7 +108,7 @@ public class Ant
         action.type = AntAction.AntActionType.PICKUP;
         action.direction = lastDir;
         action.quantity = ant.antType.getCarryCapacity() - 1;
-        return true;
+        //return true;
       }
     }
     return false;
@@ -172,6 +129,7 @@ public class Ant
     }
     return false;
   }
+  */
 
   private Direction goOppositeDirection(Direction dir)
   {
@@ -212,46 +170,81 @@ public class Ant
   }
 
   //Samples two points in the given direction and returns the average exploration value
+  //Maybe the average should also consider the cells directly around the ant instead of just around the radius of sight.
   private int getDirectionAverageValue(int x, int y, Direction direction)
   {
     int explorationValue = 0;
 
-    switch (direction)
+    switch(direction)
     {
       case NORTH:
-        explorationValue += mapReader.getExplorationVal(x, y - 29);
-        explorationValue += mapReader.getExplorationVal(x, y - 32);
+        explorationValue += mapReader.getExplorationVal(x,y-29);
+        explorationValue += mapReader.getExplorationVal(x,y-32);
         break;
       case NORTHEAST:
-        explorationValue += mapReader.getExplorationVal(x + 29, y - 29);
-        explorationValue += mapReader.getExplorationVal(x + 32, y - 32);
+        explorationValue += mapReader.getExplorationVal(x+29,y-29);
+        explorationValue += mapReader.getExplorationVal(x+32,y-32);
         break;
       case NORTHWEST:
-        explorationValue += mapReader.getExplorationVal(x - 29, y - 29);
-        explorationValue += mapReader.getExplorationVal(x - 32, y - 32);
+        explorationValue += mapReader.getExplorationVal(x-29,y-29);
+        explorationValue += mapReader.getExplorationVal(x-32,y-32);
         break;
       case SOUTH:
-        explorationValue += mapReader.getExplorationVal(x, y + 29);
-        explorationValue += mapReader.getExplorationVal(x, y + 32);
+        explorationValue += mapReader.getExplorationVal(x,y+29);
+        explorationValue += mapReader.getExplorationVal(x,y+32);
         break;
       case SOUTHEAST:
-        explorationValue += mapReader.getExplorationVal(x + 29, y + 29);
-        explorationValue += mapReader.getExplorationVal(x + 32, y + 32);
+        explorationValue += mapReader.getExplorationVal(x+29,y+29);
+        explorationValue += mapReader.getExplorationVal(x+32,y+32);
         break;
       case SOUTHWEST:
-        explorationValue += mapReader.getExplorationVal(x - 29, y + 29);
-        explorationValue += mapReader.getExplorationVal(x - 32, y + 32);
+        explorationValue += mapReader.getExplorationVal(x-29,y+29);
+        explorationValue += mapReader.getExplorationVal(x-32,y+32);
         break;
       case EAST:
-        explorationValue += mapReader.getExplorationVal(x + 29, y);
-        explorationValue += mapReader.getExplorationVal(x + 32, y);
+        explorationValue += mapReader.getExplorationVal(x+29,y);
+        explorationValue += mapReader.getExplorationVal(x+32,y);
         break;
       case WEST:
-        explorationValue += mapReader.getExplorationVal(x - 29, y);
-        explorationValue += mapReader.getExplorationVal(x - 32, y);
+        explorationValue += mapReader.getExplorationVal(x-29,y);
+        explorationValue += mapReader.getExplorationVal(x-32,y);
         break;
     }
-    return explorationValue / 2;
+    return explorationValue/2;
+  }
+
+  public Goal getCurrentGoal()
+  {
+    return this.currentGoal;
+  }
+
+  public void setCurrentGoal(Goal newGoal)
+  {
+    this.currentGoal = newGoal;
+  }
+
+  public FoodObjective getFoodObjective()
+  {
+    return foodObjective;
+  }
+
+  public void setFoodObjective(FoodObjective newObjective)
+  {
+    this.foodObjective = newObjective;
+  }
+
+  public void setPath(Path newPath)
+  {
+    hasPath = true;
+    pathStepCount = 0;
+    path = newPath;
+  }
+
+  //Called when an ant has reached the end of the path it was following.
+  private void endPath()
+  {
+    hasPath = false;
+    path = null;
   }
 
   /*--------------------HAVEN'T WORKED ON BELOW----------------------*/
@@ -267,7 +260,23 @@ public class Ant
 
   boolean goToFood(AntData ant, AntAction action)
   {
-    return false;
+    if(currentGoal != Goal.GOTOFOODSITE)
+    {
+      return false;
+    }
+    //If the ant can't see the food, it needs to A* to within 30 pixels of the food - we can always make a larger food gradient too
+
+    if(hasPath) //Ideally this should be updated if another food source is discovered closer to the ant
+    {
+      //Keep following the path
+    }
+    else if(foodObjective != null)
+    {
+
+    }
+
+    //System.err.println("GOAL = GOTOFOODSITE");
+    return true;
   }
 
   boolean goToGoodAnt(AntData ant, AntAction action)
@@ -277,114 +286,118 @@ public class Ant
 
   boolean goExplore(AntData ant, AntAction action)
   {
+
+    if(currentGoal != Goal.EXPLORE)
+    {
+      return false;
+    }
+
     Direction dir;
     System.out.println("AntID = " + ant.toStringShort());
 
-    if (!randomWalk)
+    if(!randomWalk)
     {
-      int exploreValNorth = getDirectionAverageValue(ant.gridX, ant.gridY, Direction.NORTH);
+      int exploreValNorth = getDirectionAverageValue(ant.gridX,ant.gridY,Direction.NORTH);
       int bestDirection = exploreValNorth;
       dir = Direction.NORTH;
 
-      int exploreValNE = getDirectionAverageValue(ant.gridX, ant.gridY, Direction.NORTHEAST);
-      if (exploreValNE > bestDirection)
+      int exploreValNE = getDirectionAverageValue(ant.gridX,ant.gridY,Direction.NORTHEAST);
+      if(exploreValNE > bestDirection)
       {
         bestDirection = exploreValNE;
         dir = Direction.NORTHEAST;
       }
-      else if (exploreValNE == bestDirection)
+      else if(exploreValNE == bestDirection)
       {
-        if (random.nextBoolean())
+        if(random.nextBoolean())
         {
           dir = Direction.NORTHEAST;
           randomWalk = true;
         }
       }
 
-      int exploreValNW = getDirectionAverageValue(ant.gridX, ant.gridY, Direction.NORTHWEST);
-      if (exploreValNW > bestDirection)
+      int exploreValNW = getDirectionAverageValue(ant.gridX,ant.gridY,Direction.NORTHWEST);
+      if(exploreValNW > bestDirection)
       {
         bestDirection = exploreValNW;
         dir = Direction.NORTHWEST;
       }
-      else if (exploreValNW == bestDirection)
+      else if(exploreValNW == bestDirection)
       {
-        if (random.nextBoolean())
+        if(random.nextBoolean())
         {
           dir = Direction.NORTHWEST;
           randomWalk = true;
         }
       }
 
-      int exploreValSouth = getDirectionAverageValue(ant.gridX, ant.gridY, Direction.SOUTH);
-      if (exploreValSouth > bestDirection)
+      int exploreValSouth = getDirectionAverageValue(ant.gridX,ant.gridY,Direction.SOUTH);
+      if(exploreValSouth > bestDirection)
       {
         bestDirection = exploreValSouth;
         dir = Direction.SOUTH;
       }
-      else if (exploreValSouth == bestDirection)
+      else if(exploreValSouth == bestDirection)
       {
-        if (random.nextBoolean())
+        if(random.nextBoolean())
         {
           dir = Direction.SOUTH;
           randomWalk = true;
         }
       }
 
-      int exploreValSE = getDirectionAverageValue(ant.gridX, ant.gridY, Direction.SOUTHEAST);
-      if (exploreValSE > bestDirection)
+      int exploreValSE = getDirectionAverageValue(ant.gridX,ant.gridY,Direction.SOUTHEAST);
+      if(exploreValSE > bestDirection)
       {
         bestDirection = exploreValSE;
         dir = Direction.SOUTHEAST;
       }
-      else if (exploreValSE == bestDirection)
+      else if(exploreValSE == bestDirection)
       {
-        if (random.nextBoolean())
+        if(random.nextBoolean())
         {
           dir = Direction.SOUTHEAST;
           randomWalk = true;
         }
       }
 
-      int exploreValSW = getDirectionAverageValue(ant.gridX, ant.gridY, Direction.SOUTHWEST);
-      if (exploreValSW > bestDirection)
+      int exploreValSW = getDirectionAverageValue(ant.gridX,ant.gridY,Direction.SOUTHWEST);
+      if(exploreValSW > bestDirection)
       {
         bestDirection = exploreValSW;
         dir = Direction.SOUTHWEST;
       }
-      else if (exploreValSW == bestDirection)
+      else if(exploreValSW == bestDirection)
       {
-        if (random.nextBoolean())
+        if(random.nextBoolean())
         {
           dir = Direction.SOUTHWEST;
           randomWalk = true;
         }
       }
 
-      int exploreValEast = getDirectionAverageValue(ant.gridX, ant.gridY, Direction.EAST);
-      if (exploreValEast > bestDirection)
+      int exploreValEast = getDirectionAverageValue(ant.gridX,ant.gridY,Direction.EAST);
+      if(exploreValEast > bestDirection)
       {
         bestDirection = exploreValEast;
         dir = Direction.EAST;
       }
-      else if (exploreValEast == bestDirection)
+      else if(exploreValEast == bestDirection)
       {
-        if (random.nextBoolean())
+        if(random.nextBoolean())
         {
           dir = Direction.EAST;
           randomWalk = true;
         }
       }
 
-      int exploreValWest = getDirectionAverageValue(ant.gridX, ant.gridY, Direction.WEST);
-      if (exploreValWest > bestDirection)
+      int exploreValWest = getDirectionAverageValue(ant.gridX,ant.gridY,Direction.WEST);
+      if(exploreValWest > bestDirection)
       {
         dir = Direction.WEST;
       }
-      else if (exploreValWest == bestDirection)
-      {
-        if (random.nextBoolean())
-        {
+      else if(exploreValWest == bestDirection) {
+        if (random.nextBoolean()) {
           dir = Direction.WEST;
           randomWalk = true;
         }
@@ -394,10 +407,10 @@ public class Ant
     {
       randomSteps++;
 
-      if (randomSteps >= 5)
+      if(randomSteps>=5)
       {
         randomWalk = false;
-        randomSteps = 0;
+        randomSteps =0;
       }
       dir = lastDir;
     }
@@ -405,7 +418,7 @@ public class Ant
     action.type = AntAction.AntActionType.MOVE;
     action.direction = dir;
     lastDir = dir;
-    mapReader.addAntStep(ant.gridX, ant.gridY, randomWalk);   //Used for testing
+    //mapReader.addAntStep(ant.gridX,ant.gridY,randomWalk);   //Used for testing
     return true;
   }
 }

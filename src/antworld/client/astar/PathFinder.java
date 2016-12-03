@@ -1,5 +1,6 @@
 package antworld.client.astar;
 
+import antworld.client.Ant;
 import antworld.common.Direction;
 import antworld.common.LandType;
 import antworld.server.Cell;
@@ -22,28 +23,26 @@ public class PathFinder {
   private Coordinate end;
   private final int ELEVATIONCOST = 2;
   private StepComparator stepComparator;
-  private PriorityQueue stepQueue;
-  private final int WORLDWIDTH = 5000;  //Replace with world.getWorldWidth later
-  private final int WORLDHEIGHT = 2500;
+  private PriorityQueue<Step> stepQueue;
+  private final int MAPWIDTH;  //Replace with world.getWorldWidth later
+  private final int MAPHEIGHT;
   private boolean[][] visited;
-  private Cell[][] world;
-  private int mapWidth;
-  private int mapHeight;
+  private Cell[][] geoMap;  //The pathfinder's personal copy of the map to read
 
-  public PathFinder(Cell[][] world, int mapWidth, int mapHeight)
+  public PathFinder(Cell[][] geoMap, int mapWidth, int mapHeight)
   {
-    this.world = world;
-    this.mapWidth = mapWidth;
-    this.mapHeight = mapHeight;
+    this.geoMap = geoMap;
+    MAPWIDTH = mapWidth;
+    MAPHEIGHT = mapHeight;
     //this.elevationCost = elevationCost;
     stepComparator = new StepComparator();
-    stepQueue = new PriorityQueue(512, stepComparator);
+    stepQueue = new PriorityQueue<>(512, stepComparator);
   }
 
   private void drawPath(Path path)
   {
     System.out.println("Drawing Path:");
-    BufferedImage pathMap = new BufferedImage(mapWidth, mapHeight, BufferedImage.TYPE_INT_ARGB);
+    BufferedImage pathMap = new BufferedImage(MAPWIDTH, MAPHEIGHT, BufferedImage.TYPE_INT_ARGB);
     //Color pathColor = new Color(255,0,0,1);
     ArrayList<Coordinate> steps = path.getPath();
     int nextX;
@@ -76,10 +75,16 @@ public class PathFinder {
     }
   }
 
+  //Used by ants to request a new path to a location
+  public void requestPath(Ant ant, int x2, int y2, int x1, int y1)
+  {
+    ant.setPath(findPath(x2,y2,x1,y1));
+  }
+
   //Finds a path from the destination back to the origin
   public Path findPath(int x2, int y2, int x1, int y1)
   {
-    visited = new boolean[WORLDWIDTH][WORLDHEIGHT];
+    visited = new boolean[MAPWIDTH][MAPHEIGHT];
     boolean foundPath = false;
     boolean pathBuilt = false;
     this.start = new Coordinate(x1,y1,0);
@@ -93,7 +98,7 @@ public class PathFinder {
 
     while(!foundPath)
     {
-      nextStep = (Step) stepQueue.poll();
+      nextStep = stepQueue.poll();
       if(nextStep.getLocation().getX() == x2 && nextStep.getLocation().getY() == y2)
       {
         foundPath = true;
@@ -107,7 +112,7 @@ public class PathFinder {
 
     Step lastStep = nextStep;
     pathTravelCost=lastStep.getTravelCostSoFar();
-    System.out.println("Path travelCost = " + pathTravelCost);
+    //System.out.println("Path travelCost = " + pathTravelCost);
     steps.add(lastStep.getLocation());
     while(!pathBuilt)
     {
@@ -123,9 +128,7 @@ public class PathFinder {
       lastStep=previousStep;
     }
 
-    Path path = new Path(start, end, steps, pathTravelCost);
-
-    return path;
+    return new Path(start, end, steps, pathTravelCost);
   }
 
   private void addNeighbors(Step currentStep)
@@ -178,7 +181,7 @@ public class PathFinder {
         continue;
       }
 
-      Cell nextCell = world[nextX][nextY];
+      Cell nextCell = geoMap[nextX][nextY];
 
       if(nextCell.getLandType() == LandType.WATER)
       {
@@ -193,8 +196,8 @@ public class PathFinder {
       {
         Coordinate currentCoord = currentStep.getLocation();
         Coordinate nextCoord;
-        int currentElevation = world[currentCoord.getX()][currentCoord.getY()].getHeight();
-        int nextElevation = world[nextX][nextY].getHeight();
+        int currentElevation = geoMap[currentCoord.getX()][currentCoord.getY()].getHeight();
+        int nextElevation = geoMap[nextX][nextY].getHeight();
 
         if(nextElevation > currentElevation)  //If the next step in frontier has a higher elevation, raise travel cost
         {
@@ -210,14 +213,6 @@ public class PathFinder {
         stepQueue.add(nextStep);
       }
     }
-  }
-
-  public static void main(String[] args)
-  {
-    MapReader mapReader = new MapReader("resources/AntTestWorld11.png");
-    PathFinder pathFinder = new PathFinder(mapReader.getWorld(), mapReader.getMapWidth(), mapReader.getMapWidth());
-    Path testPath = pathFinder.findPath(62,263,135,196); //Origin (224,162) Target (139,162)
-    pathFinder.drawPath(testPath);
   }
 
   private class StepComparator implements Comparator<Step>
