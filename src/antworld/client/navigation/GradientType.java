@@ -1,4 +1,4 @@
-package antworld.client;
+package antworld.client.navigation;
 
 /**
  * Created by John on 11/27/2016.

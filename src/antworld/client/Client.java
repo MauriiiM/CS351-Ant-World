@@ -6,45 +6,45 @@ import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Random;
 
-import antworld.client.astar.MapReader;
-import antworld.client.astar.PathFinder;
+import antworld.client.navigation.MapManager;
+import antworld.client.navigation.PathFinder;
 import antworld.common.*;
 import antworld.common.AntAction.AntActionType;
 import antworld.server.Cell;
 
 public class Client
 {
-  private static final boolean DEBUG = true;
+  private static final boolean DEBUG = false;
+  private final String mapFilePath = "resources/AntTestWorldDiffusion.png";
   private final TeamNameEnum myTeam;
   private static final long password = 962740848319L;//Each team has been assigned a random password.
   private ObjectInputStream inputStream = null;
   private ObjectOutputStream outputStream = null;
   private boolean isConnected = false;
   private NestNameEnum myNestName = null;
-  private MapReader mapReader;
+  //private MapManager mapManager;
   private Socket clientSocket;
-  private HashMap<AntData, Ant> dataObjectmap;
-  private Ant ant;
-  private Cell[][] geoMap;
-  private static final int MINFOODRESPONSE = 200; //If an ant is within 200 cells of a food site, it will navigate to the food site
-  private FoodManager foodManager;
-  private PathFinder pathfinder;
+  //private HashMap<Integer, Ant> dataObjectmap;  //Must use ID as the key because antData is constantly changing
+  //private Ant ant;
+  //private Cell[][] geoMap;
+  //private FoodManager foodManager;
+  //private PathFinder pathfinder;
+  private NestManager nestManager;
 
 
   private Client(String host, int portNumber, TeamNameEnum team)
   {
-    mapReader = new MapReader("resources/AntTestWorldDiffusion.png");
-    geoMap = mapReader.getGeoMap();
-    pathfinder = new PathFinder(geoMap,mapReader.getMapWidth(),mapReader.getMapHeight());
-    Ant.mapReader = mapReader;
-    Ant.pathFinder = pathfinder;
+    nestManager = new NestManager(this, mapFilePath);
+    //mapManager = new MapManager("resources/AntTestWorldDiffusion.png");
+    //geoMap = mapManager.getGeoMap();
+    //pathfinder = new PathFinder(geoMap, mapManager.getMapWidth(), mapManager.getMapHeight());
+    //Ant.mapManager = mapManager;
+    //Ant.pathFinder = pathfinder;
     myTeam = team;
-    dataObjectmap = new HashMap<>();
+    //dataObjectmap = new HashMap<>();
     //foodManager = new FoodManager(dataObjectmap,pathfinder);
+    //foodManager.start();
     System.out.println("Starting " + team + " on " + host + ":" + portNumber + " at "
         + System.currentTimeMillis());
 
@@ -168,17 +168,22 @@ public class Client
    */
   public void mainGameLoop(CommData data)
   {
+    /*
     for (AntData ant : data.myAntList)
     {
       dataObjectmap.put(ant, new Ant(ant));
     }
+    */
+
+    nestManager.initializeAntMap(data);
+
     while (true)
     {
       try
       {
         if (DEBUG) System.out.println("Client: chooseActions: " + myNestName);
-        chooseActionsOfAllAnts(data);
-        CommData sendData = data.packageForSendToServer();
+        nestManager.chooseActionsOfAllAnts(data);   //Send the commData to the nest manager to work with
+        CommData sendData = data.packageForSendToServer();  //Send the commData back to the server onces the nest manager is done
 
         System.out.println("Client: Sending>>>>>>>: " + sendData);
         outputStream.writeObject(sendData);
@@ -231,14 +236,15 @@ public class Client
     return true;
   }
 
+  /*
   private void chooseActionsOfAllAnts(CommData commData)
   {
-    mapReader.regenerateExplorationVals();  //LATER: Should be called on seperate thread or something?
+    mapManager.regenerateExplorationVals();  //LATER: Should be called on seperate thread or something?
     foodManager.readFoodSet(commData.foodSet);
 
     for (AntData ant : commData.myAntList)
     {
-      mapReader.updateCellExploration(ant.gridX,ant.gridY);
+      mapManager.updateCellExploration(ant.gridX,ant.gridY);
       AntAction action = chooseAction(commData, ant);
       ant.myAction = action;
     }
@@ -274,6 +280,7 @@ public class Client
 
     return action;
   }
+  */
 
   /**
    * The last argument is taken as the host name.
@@ -289,7 +296,8 @@ public class Client
     if (args.length > 0) serverHost = args[args.length - 1];
 
     TeamNameEnum team;
-    if (DEBUG) team = TeamNameEnum.John_Mauricio;
+    //if (DEBUG) team = TeamNameEnum.John_Mauricio;
+    if (true) team = TeamNameEnum.John_Mauricio;
     else if (args.length > 1)
     {
       team = TeamNameEnum.getTeamByString(args[0]);

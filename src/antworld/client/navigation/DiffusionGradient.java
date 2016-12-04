@@ -1,4 +1,4 @@
-package antworld.client.astar;
+package antworld.client.navigation;
 
 /**
  * A diffusion gradient that can written to the client map
@@ -53,7 +53,7 @@ public class DiffusionGradient
   {
     gradient[radius][radius] = goalValue;  //The gradient center's diffusion value equals the goal
     gradient = expandDiffusionGradient(radius,radius);
-    printGradient();    //Used for testing
+    //printGradient();    //Used for testing
   }
 
   /**

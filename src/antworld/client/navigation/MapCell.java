@@ -1,4 +1,4 @@
-package antworld.client;
+package antworld.client.navigation;
 
 import antworld.common.LandType;
 import antworld.server.Cell;

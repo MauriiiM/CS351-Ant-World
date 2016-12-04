@@ -1,4 +1,4 @@
-package antworld.client.astar;
+package antworld.client.navigation;
 
 /**
  * A coordinate is an X,Y location on the map defined by int x and int y

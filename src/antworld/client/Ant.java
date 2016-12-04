@@ -1,8 +1,9 @@
 package antworld.client;
 
-import antworld.client.astar.MapReader;
-import antworld.client.astar.Path;
-import antworld.client.astar.PathFinder;
+import antworld.client.navigation.MapCell;
+import antworld.client.navigation.MapManager;
+import antworld.client.navigation.Path;
+import antworld.client.navigation.PathFinder;
 import antworld.common.*;
 
 import java.util.Random;
@@ -17,10 +18,11 @@ public class Ant
   static int centerX, centerY;
   static int antsUnderground;
   static MapCell[][] world;
-  static MapReader mapReader;
+  static MapManager mapManager;
   static CommData data;
   Direction dir, lastDir;
-  AntData antData;
+  private AntData antData;
+  public final int antID;
   //  AntAction action;
   boolean hasPath = false;
   Path path;
@@ -33,6 +35,17 @@ public class Ant
   Ant(AntData ant)
   {
     this.antData = ant;
+    this.antID = ant.id;
+  }
+
+  public void setAntData(AntData newData)
+  {
+    this.antData = newData;
+  }
+
+  public AntData getAntData()
+  {
+    return this.antData;
   }
 
   //only called when ant's in the nest and will be true
@@ -102,7 +115,7 @@ public class Ant
   {
     if (lastDir != null)
     {
-      //MapCell targetCell = mapReader.getMapCell(ant.gridX + lastDir.deltaX(),ant.gridY + lastDir.deltaY());
+      //MapCell targetCell = mapManager.getMapCell(ant.gridX + lastDir.deltaX(),ant.gridY + lastDir.deltaY());
       if (world[ant.gridX + lastDir.deltaX()][ant.gridY + lastDir.deltaY()].getLandType() == LandType.WATER)
       {
         action.type = AntAction.AntActionType.PICKUP;
@@ -118,7 +131,7 @@ public class Ant
   {
     if (lastDir != null)
     {
-      //MapCell targetCell = mapReader.getMapCell(ant.gridX + lastDir.deltaX(),ant.gridY + lastDir.deltaY());
+      //MapCell targetCell = mapManager.getMapCell(ant.gridX + lastDir.deltaX(),ant.gridY + lastDir.deltaY());
       if (world[ant.gridX + lastDir.deltaX()][ant.gridY + lastDir.deltaY()].getFood() != null)
       {
         action.type = AntAction.AntActionType.PICKUP;
@@ -178,36 +191,36 @@ public class Ant
     switch(direction)
     {
       case NORTH:
-        explorationValue += mapReader.getExplorationVal(x,y-29);
-        explorationValue += mapReader.getExplorationVal(x,y-32);
+        explorationValue += mapManager.getExplorationVal(x,y-29);
+        explorationValue += mapManager.getExplorationVal(x,y-32);
         break;
       case NORTHEAST:
-        explorationValue += mapReader.getExplorationVal(x+29,y-29);
-        explorationValue += mapReader.getExplorationVal(x+32,y-32);
+        explorationValue += mapManager.getExplorationVal(x+29,y-29);
+        explorationValue += mapManager.getExplorationVal(x+32,y-32);
         break;
       case NORTHWEST:
-        explorationValue += mapReader.getExplorationVal(x-29,y-29);
-        explorationValue += mapReader.getExplorationVal(x-32,y-32);
+        explorationValue += mapManager.getExplorationVal(x-29,y-29);
+        explorationValue += mapManager.getExplorationVal(x-32,y-32);
         break;
       case SOUTH:
-        explorationValue += mapReader.getExplorationVal(x,y+29);
-        explorationValue += mapReader.getExplorationVal(x,y+32);
+        explorationValue += mapManager.getExplorationVal(x,y+29);
+        explorationValue += mapManager.getExplorationVal(x,y+32);
         break;
       case SOUTHEAST:
-        explorationValue += mapReader.getExplorationVal(x+29,y+29);
-        explorationValue += mapReader.getExplorationVal(x+32,y+32);
+        explorationValue += mapManager.getExplorationVal(x+29,y+29);
+        explorationValue += mapManager.getExplorationVal(x+32,y+32);
         break;
       case SOUTHWEST:
-        explorationValue += mapReader.getExplorationVal(x-29,y+29);
-        explorationValue += mapReader.getExplorationVal(x-32,y+32);
+        explorationValue += mapManager.getExplorationVal(x-29,y+29);
+        explorationValue += mapManager.getExplorationVal(x-32,y+32);
         break;
       case EAST:
-        explorationValue += mapReader.getExplorationVal(x+29,y);
-        explorationValue += mapReader.getExplorationVal(x+32,y);
+        explorationValue += mapManager.getExplorationVal(x+29,y);
+        explorationValue += mapManager.getExplorationVal(x+32,y);
         break;
       case WEST:
-        explorationValue += mapReader.getExplorationVal(x-29,y);
-        explorationValue += mapReader.getExplorationVal(x-32,y);
+        explorationValue += mapManager.getExplorationVal(x-29,y);
+        explorationValue += mapManager.getExplorationVal(x-32,y);
         break;
     }
     return explorationValue/2;
@@ -268,11 +281,25 @@ public class Ant
 
     if(hasPath) //Ideally this should be updated if another food source is discovered closer to the ant
     {
-      //Keep following the path
+      if(pathStepCount < path.getPath().size()-1)
+      {
+        action.type = AntAction.AntActionType.MOVE;
+        action.direction = xyCoordinateToDirection(path.getPath().get(pathStepCount).getX(), path.getPath().get(pathStepCount).getY(), ant.gridX, ant.gridY);
+        pathStepCount ++;
+      }
+      else if (hasPath && pathStepCount == path.getPath().size()-1)
+      {
+        System.err.println("DONE FOLLOWING PATH");
+        //System.exit(3);
+        //action.type = enterNest();
+        return true;
+        //endPath();
+      }
     }
     else if(foodObjective != null)
     {
-
+      System.err.println("ANT DOES NOT HAVE PATH TO FOOD:  " + antData.toString());
+      System.exit(2);
     }
 
     //System.err.println("GOAL = GOTOFOODSITE");
@@ -293,7 +320,7 @@ public class Ant
     }
 
     Direction dir;
-    System.out.println("AntID = " + ant.toStringShort());
+    //System.out.println("AntID = " + ant.toStringShort());
 
     if(!randomWalk)
     {
@@ -418,7 +445,7 @@ public class Ant
     action.type = AntAction.AntActionType.MOVE;
     action.direction = dir;
     lastDir = dir;
-    //mapReader.addAntStep(ant.gridX,ant.gridY,randomWalk);   //Used for testing
+    //mapManager.addAntStep(ant.gridX,ant.gridY,randomWalk);   //Used for testing
     return true;
   }
 }

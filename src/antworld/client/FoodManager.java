@@ -1,64 +1,88 @@
 package antworld.client;
 
-import antworld.client.astar.Path;
-import antworld.client.astar.PathFinder;
+import antworld.client.navigation.Path;
+import antworld.client.navigation.PathFinder;
 import antworld.common.AntData;
 import antworld.common.FoodData;
 import antworld.common.Util;
 
 import java.util.*;
 
-import static antworld.client.Ant.mapReader;
+import static antworld.client.Ant.mapManager;
 
 /**
- * Manages groups of ants to direct them to goals
+ * Manages food sites and directs the collection of food
  * Created by John on 12/1/2016.
  */
-public class FoodManager //implements Runnable
+public class FoodManager extends Thread
 {
   //private ArrayList<AntData> antList;         //Work out how to share antList...
   private ArrayList<FoodObjective> foodObjectives;
   private HashSet<FoodData> foodSites;      //This will be the only thing touched by other threads
   private PriorityQueue<FoodObjective> unprocessedFoodObjectives;
   private PathFinder pathFinder;
-  private final int OPTIMALCARRYCAPACITY = 25;  //The optimal amount of food for an ant to carry to the nest
+  private final int OPTIMALCARRYCAPACITY = 100;  //The optimal amount of food for an ant to carry to the nest
   private final int FOODGRADIENTRADIUS = 30;    //The radius of food gradients
   //private final int MINFOODRESPONSE = 200;
   private volatile boolean running = true;
-  private HashMap<AntData, Ant> antMap;
+  private HashMap<Integer, Ant> antMap;     //This doesn't work because the antData is constantly changing
 
   /**
    * @todo When a food objective is found a path should be found from the food site back to the nest for all ants to follow after they have collected food
    * @todo DEFINITELY need to check out concurrency issues and probably synchronize some variables
    */
 
-  public FoodManager(HashMap<AntData, Ant> antMap, PathFinder pathFinder)
+  public FoodManager(HashMap<Integer, Ant> antMap, PathFinder pathFinder)
   {
     this.antMap = antMap;
     this.pathFinder = pathFinder;
     FoodObjectiveComparator foodComparator = new FoodObjectiveComparator();
     unprocessedFoodObjectives = new PriorityQueue<>(foodComparator);
     foodSites = new HashSet<>();
+    foodObjectives = new ArrayList<>();
   }
 
   //Reads a foodSet and updates the manager's own set of foodsites
-  public void readFoodSet(HashSet<FoodData> foodSet)
+  public void readFoodSet(FoodData[] foodArray)
   {
     synchronized (foodSites)
     {
-      if (foodSet.size() > 0) {
+      if (foodArray.length > 0) {
         FoodData nextFood;
+        FoodData nextSite;
+        int foodX;
+        int foodY;
+        int siteX;
+        int siteY;
 
-        for (Iterator<FoodData> i = foodSet.iterator(); i.hasNext(); ) {
-          nextFood = i.next();
-          if (!foodSites.contains(nextFood))  //If this food site has not already been discovered
+        for (int i = 0; i < foodArray.length; i++)  //Iterate over the food set from the server
+        {
+          nextFood = foodArray[i];
+          foodX = nextFood.gridX;
+          foodY = nextFood.gridY;
+
+          if(foodSites.size() == 0)
           {
-            int foodX = nextFood.gridX;
-            int foodY = nextFood.gridY;
             String foodData = nextFood.toString();
             foodSites.add(nextFood);
-            mapReader.updateCellFoodProximity(foodX, foodY);
-            System.err.println("Found Food @ (" + foodX + "," + foodY + ") : " + foodData);
+            mapManager.updateCellFoodProximity(foodX, foodY);
+            System.err.println("First Site: FoodManager: Found Food @ (" + foodX + "," + foodY + ") : " + foodData);
+          }
+
+          for (Iterator<FoodData> j = foodSites.iterator(); j.hasNext(); )  //Iterate over our own set of food sites
+          {
+            nextSite = j.next();    //GETTING CONCURRENTMODIFICATIONEXCEPTION HERE!!!! WHEN A SECOND FOOD SITE IS FOUND
+            siteX = nextSite.gridX;
+            siteY = nextSite.gridY;
+
+            if(siteX != foodX || siteY != foodY)  //If the coords don't match, must be a new site
+            {
+              String foodData = nextFood.toString();
+              foodSites.add(nextFood);
+              mapManager.updateCellFoodProximity(foodX, foodY);
+              System.err.println("Second Site: FoodManager: Found Food @ (" + foodX + "," + foodY + ") : " + foodData);
+              System.err.println("\t foodSite size = " + foodSites.size());
+            }
           }
         }
       }
@@ -80,6 +104,9 @@ public class FoodManager //implements Runnable
     FoodObjective newObjective = new FoodObjective(foodSite);
     foodObjectives.add(newObjective);   //Add new objective to collection of food objectives
     unprocessedFoodObjectives.add(newObjective);
+    //System.err.println("FoodManager added: " + foodSite.toString() + " || to foodObjectives and unprocessed!");
+    //System.err.println("foodObjectives size = " + foodObjectives.size());
+    //System.err.println("uprocessed size= " + unprocessedFoodObjectives.size());
   }
 
   //Returns the number of ants required to carry all of the food from a food site back to the nest
@@ -105,7 +132,7 @@ public class FoodManager //implements Runnable
     AntComparator comparator = new AntComparator(foodX, foodY);
     PriorityQueue<Ant> antQueue = new PriorityQueue<>(comparator);
 
-    for (AntData antData : antMap.keySet())
+    for (Integer antData : antMap.keySet())
     {
       Ant ant = antMap.get(antData);
       if(ant.getCurrentGoal() != Goal.RETURNTONEST) //If the ant was not already returning to the nest for a reason/ant is available to go collect food
@@ -126,20 +153,20 @@ public class FoodManager //implements Runnable
           FoodObjective previousObjective = nextAnt.getFoodObjective();
           previousObjective.unallocateAnt(nextAnt);  //Unallocate ant from previous food objective
           foodObjective.allocateAnt(nextAnt);      //Allocate ant to new food objective
-          nextAnt.setPath(generatePathToFood(nextAnt.antData,foodData));  //Give the ant a path to the new food objective
+          nextAnt.setPath(generatePathToFood(nextAnt.getAntData(),foodData));  //Give the ant a path to the new food objective
           unprocessedFoodObjectives.add(previousObjective);   //Add previous objective to priority queue so a new ant gets allocated to it later
           antsAllocated ++;
         }
       }
       else
       {
+        System.err.println("ALLOCATING: " + nextAnt.getAntData().toString());
         nextAnt.setCurrentGoal(Goal.GOTOFOODSITE);
-        nextAnt.setPath(generatePathToFood(nextAnt.antData, foodData));
+        nextAnt.setPath(generatePathToFood(nextAnt.getAntData(), foodData));
         foodObjective.allocateAnt(nextAnt);
         antsAllocated++;
       }
     }
-
   }
 
   //Compares two food sites and returns the most favorable one for an ant to pursue
@@ -147,8 +174,8 @@ public class FoodManager //implements Runnable
   {
     if(currentObjective != null && otherObjective != null)
     {
-      int antX = ant.antData.gridX;
-      int antY = ant.antData.gridY;
+      int antX = ant.getAntData().gridX;
+      int antY = ant.getAntData().gridY;
       int currentX = currentObjective.getObjectiveX();
       int currentY = currentObjective.getObjectiveY();
       int otherX = currentObjective.getObjectiveX();
@@ -242,7 +269,7 @@ public class FoodManager //implements Runnable
     return pathFinder.findPath(targetX,targetY,antX,antY);
   }
 
-  //@Override
+  @Override
   public void run()
   {
     while(running)
@@ -261,14 +288,13 @@ public class FoodManager //implements Runnable
             {
               if (objective.getFoodData() == nextFood) //This food site has already been stored as an objective
               {
-                newSite = false;
+                newSite = false; 
               }
             }
 
             if (newSite) //If this site has not been stored as an objective, make a new one, store it.
             {
               addFoodObjective(nextFood);
-              System.err.println("added new objective: " + nextFood.toString());
             }
           }
         }
@@ -285,10 +311,9 @@ public class FoodManager //implements Runnable
   private class FoodObjectiveComparator implements Comparator<FoodObjective>
   {
     //***********************************
-    //The comparator sorts ants based on their proximity to a food site
-    //The comparator sorts ants based on their proximity to a food site
+    //The comparator compares food sites according to their quantity
     //This method returns zero if the objects are equal.
-    //It returns a positive value if ant1 is closer than ant2. Otherwise, a negative value is returned.
+    //It returns a negative value if food site 1 has more food than food site 2. Otherwise, a positive value is returned.
     //***********************************
     @Override
     public int compare(FoodObjective objective1, FoodObjective objective2)
@@ -298,17 +323,17 @@ public class FoodManager //implements Runnable
 
       if(objectiveCount1 > objectiveCount2)
       {
-        return 1;
+        return -1;
       }
       else if(objectiveCount1 < objectiveCount2)
       {
-        return -1;
+        return 1;
       }
       return 0;
     }
   }
 
-  //Compares ants based on their proximity to an objective
+  //Compares ants based on their proximity to a food site
   private class AntComparator implements Comparator<Ant>
   {
     private int foodX;
@@ -319,24 +344,23 @@ public class FoodManager //implements Runnable
       this.foodY = foodY;
     }
     //***********************************
-    //The comparator sorts ants based on their proximity to a food site
-    //The comparator sorts ants based on their proximity to a food site
+    //The comparator compares ants based on their proximity to a food site
     //This method returns zero if the objects are equal.
-    //It returns a positive value if ant1 is closer than ant2. Otherwise, a negative value is returned.
+    //It returns a negative value if ant1 is closer than ant2. Otherwise, a positive value is returned.
     //***********************************
     @Override
     public int compare(Ant ant1, Ant ant2) {
 
-      int ant1Distance = Util.manhattanDistance(ant1.antData.gridX, ant1.antData.gridY, foodX, foodY);
-      int ant2Distance = Util.manhattanDistance(ant2.antData.gridX, ant2.antData.gridY, foodX, foodY);
+      int ant1Distance = Util.manhattanDistance(ant1.getAntData().gridX, ant1.getAntData().gridY, foodX, foodY);
+      int ant2Distance = Util.manhattanDistance(ant2.getAntData().gridX, ant2.getAntData().gridY, foodX, foodY);
 
       if(ant1Distance < ant2Distance)
       {
-        return 1;
+        return -1;
       }
       else if(ant1Distance > ant2Distance)
       {
-        return -1;
+        return 1;
       }
       return 0;
     }

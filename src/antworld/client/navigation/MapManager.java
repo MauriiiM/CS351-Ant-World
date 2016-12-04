@@ -1,7 +1,5 @@
-package antworld.client.astar;
+package antworld.client.navigation;
 
-import antworld.client.GradientType;
-import antworld.client.MapCell;
 import antworld.common.LandType;
 import antworld.server.Cell;
 
@@ -14,8 +12,8 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
-import static antworld.client.GradientType.EXPLORE;
-import static antworld.client.GradientType.FOOD;
+import static antworld.client.navigation.GradientType.EXPLORE;
+import static antworld.client.navigation.GradientType.FOOD;
 
 /**
  * Reads a map and creates an array of Cells to represent the world
@@ -23,7 +21,7 @@ import static antworld.client.GradientType.FOOD;
  * Used for terrain/elevation checking when path finding.
  * Created by John on 11/23/2016.
  */
-public class MapReader
+public class MapManager
 {
   private String imagePath = null;  //"resources/AntTestWorld4.png"
   private BufferedImage map = null;
@@ -43,7 +41,7 @@ public class MapReader
 
   ArrayList<AntStep> antSteps = new ArrayList<>();
 
-  public MapReader(String mapPath)
+  public MapManager(String mapPath)
   {
     this.imagePath = mapPath;
     map = loadMap(imagePath);
@@ -343,7 +341,7 @@ public class MapReader
   // Used for testing
   public static void main(String[] args)
   {
-    MapReader test = new MapReader("resources/AntTestWorld2.png");
+    MapManager test = new MapManager("resources/AntTestWorld2.png");
     //test.createDiffusionGradient(150,150,1,500,GradientType.EXPLORE);
     //test.updateCellExploration(150,150);
     //test.drawGradient();

@@ -1,4 +1,4 @@
-package antworld.client.astar;
+package antworld.client.navigation;
 
 import antworld.client.Ant;
 import antworld.common.Direction;
