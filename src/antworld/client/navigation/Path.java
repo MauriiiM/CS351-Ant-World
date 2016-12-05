@@ -11,7 +11,6 @@ public class Path {
   private Coordinate start;
   private Coordinate end;
   private ArrayList<Coordinate> steps; //The sequence of coordinates between the starting and ending coordinates
-  //Is arraylist the best data structure for this..?
   private boolean completed;
   private int travelCost;
 
@@ -61,5 +60,15 @@ public class Path {
   public int getTravelCost()
   {
     return travelCost;
+  }
+
+  public Coordinate getPathStart()
+  {
+    return this.start;
+  }
+
+  public Coordinate getPathEnd()
+  {
+    return this.end;
   }
 }

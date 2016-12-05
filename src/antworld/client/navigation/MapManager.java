@@ -12,8 +12,11 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedList;
+
 import static antworld.client.navigation.GradientType.EXPLORE;
 import static antworld.client.navigation.GradientType.FOOD;
+import static antworld.client.navigation.GradientType.PATH;
 
 /**
  * Reads a map and creates an array of Cells to represent the world
@@ -23,7 +26,7 @@ import static antworld.client.navigation.GradientType.FOOD;
  */
 public class MapManager
 {
-  private String imagePath = null;  //"resources/AntTestWorld4.png"
+  private String imagePath = null;
   private BufferedImage map = null;
   private MapCell[][] world;  //This is used by map reader to store information
   private Cell[][] geoMap;  //This is used by pathfinder to read geographical information
@@ -35,9 +38,13 @@ public class MapManager
   private static final int EXPLORATIONREGENVAL = 15;
   private static final int FOODRADIUS = 30;
   private static final int FOODVALUE = 1000;
+  private static final int PATHSTARTRADIUS = 5;
+  private static final int PATHSTARTVALUE = 1000;
   private DiffusionGradient explorationGradient;
   private DiffusionGradient foodGradient;
+  private DiffusionGradient pathStartGradient;
   private HashSet<MapCell> exploredRecently;
+  private LinkedList<Coordinate> occupiedRecently;
 
   ArrayList<AntStep> antSteps = new ArrayList<>();
 
@@ -47,8 +54,10 @@ public class MapManager
     map = loadMap(imagePath);
     readMap(map);
     exploredRecently = new HashSet<>();
+    occupiedRecently = new LinkedList<>();
     explorationGradient = new DiffusionGradient(EXPLORATIONRADIUS,EXPLORATIONVALUE,DIFFUSIONCOEFFICIENT);
     foodGradient = new DiffusionGradient(FOODRADIUS, FOODVALUE, DIFFUSIONCOEFFICIENT);
+    pathStartGradient = new DiffusionGradient(PATHSTARTRADIUS,PATHSTARTVALUE,DIFFUSIONCOEFFICIENT);
     //drawMap();  //Used for testing
   }
 
@@ -126,6 +135,14 @@ public class MapManager
     return mapHeight;
   }
 
+  /*
+   *@todo: Need a function to erase the gradients once a food source is depleted. (food gradient and path start gradient)
+   */
+  public void createPathStartGradient(int pathStartX, int pathStartY)
+  {
+    writeGradientToMap(pathStartX, pathStartY, PATHSTARTRADIUS, pathStartGradient.getGradient(),GradientType.PATH);
+  }
+
   public void updateCellFoodProximity(int foodX, int foodY)
   {
     writeGradientToMap(foodX,foodY,FOODRADIUS,foodGradient.getGradient(),GradientType.FOOD);
@@ -134,6 +151,19 @@ public class MapManager
   public void updateCellExploration(int explorerX, int explorerY)
   {
     writeGradientToMap(explorerX,explorerY,EXPLORATIONRADIUS,explorationGradient.getGradient(),GradientType.EXPLORE);
+  }
+
+  public int getFoodProximityVal(int x, int y)
+  {
+    if(x < 0 || x >= mapWidth || y < 0 || y >= mapHeight)
+    {
+      return 0;
+    }
+
+    synchronized (world)
+    {
+      return world[x][y].getFoodProximityVal();
+    }
   }
 
   public int getExplorationVal(int x, int y)
@@ -146,6 +176,19 @@ public class MapManager
     synchronized (world)
     {
       return world[x][y].getExplorationVal();
+    }
+  }
+
+  public int getPathProximityVal(int x, int y)
+  {
+    if(x < 0 || x >= mapWidth || y < 0 || y >= mapHeight)
+    {
+      return 0;
+    }
+
+    synchronized (world)
+    {
+      return world[x][y].getPathVal();
     }
   }
 
@@ -169,6 +212,33 @@ public class MapManager
           {
             i.remove();
           }
+        }
+      }
+    }
+  }
+
+  public void updateCellOccupied(LinkedList<Coordinate> antLocations)
+  {
+    resetOccupiedCells(); //Set the cells occupied last tick to false
+    synchronized (world)
+    {
+      for(Coordinate nextCoord : antLocations)
+      {
+        world[nextCoord.getX()][nextCoord.getY()].setOccupied(true);
+      }
+    }
+    occupiedRecently = antLocations;  //Give occupiedRecently a reference to the new list of antLocations
+  }
+
+  private void resetOccupiedCells()
+  {
+    if(occupiedRecently.size() > 0)
+    {
+      synchronized (world)
+      {
+        for(Coordinate nextCoord : occupiedRecently)
+        {
+          world[nextCoord.getX()][nextCoord.getY()].setOccupied(false);
         }
       }
     }
@@ -217,27 +287,28 @@ public class MapManager
 
           nextVal = diffusionValues[i][j];
 
-          switch (type) {
-            case FOOD:
-              nextVal *= FOOD.polarity();
-              world[nextX][nextY].setFoodProximityVal(nextVal);
-              break;
-            case EXPLORE:
-              exploredRecently.add(world[nextX][nextY]);  //Add the new cell to exploredRecently to regenerate its exploration over time
-              nextVal *= EXPLORE.polarity();
-              //System.out.println("nextWorldVal = " + world[nextX][nextY].getExplorationVal());
-              nextVal = world[nextX][nextY].getExplorationVal() + nextVal;
-              //System.out.println("nextVal = " + nextVal);
-              if (nextVal < 0) {
-                nextVal = 0;
-
-              }
-              world[nextX][nextY].setExplorationVal(nextVal);
-              break;
+          if(world[nextX][nextY].getLandType() != LandType.WATER) //If this is not a water cell
+          {
+            switch (type) {
+              case FOOD:
+                nextVal *= FOOD.polarity();
+                world[nextX][nextY].setFoodProximityVal(nextVal);
+                break;
+              case EXPLORE:
+                exploredRecently.add(world[nextX][nextY]);  //Add the new cell to exploredRecently to regenerate its exploration over time
+                nextVal *= EXPLORE.polarity();
+                nextVal = world[nextX][nextY].getExplorationVal() + nextVal;
+                if (nextVal < 0) {
+                  nextVal = 0;
+                }
+                world[nextX][nextY].setExplorationVal(nextVal);
+                break;
+              case PATH:
+                nextVal *= PATH.polarity();
+                world[nextX][nextY].setPathVal(nextVal);
+                break;
+            }
           }
-
-          //System.out.println("i="+i+" || j="+j + " || diameter=" + diameter);
-          //System.out.println("Setting world["+nextX+"]["+nextY+"] = " + nextVal);
         }
       }
     }

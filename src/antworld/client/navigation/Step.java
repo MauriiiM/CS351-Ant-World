@@ -1,6 +1,6 @@
 package antworld.client.navigation;
 
-import antworld.common.Util;
+import antworld.client.NestManager;
 
 /**
  * A step is single movement from an original coordinate to a target location
@@ -19,7 +19,7 @@ public class Step
   {
     this.location = location;
     this.lastStep = lastStep;
-    distanceToEnd = Util.manhattanDistance(location.getX(), location.getY(), target.getX(), target.getY());
+    distanceToEnd = NestManager.calculateDistance(location.getX(), location.getY(), target.getX(), target.getY());
     if(lastStep != null)
     {
       travelCost = lastStep.getTravelCostSoFar();

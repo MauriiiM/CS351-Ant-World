@@ -5,17 +5,11 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.net.UnknownHostException;
-import java.util.HashMap;
-
-import antworld.client.navigation.MapManager;
-import antworld.client.navigation.PathFinder;
 import antworld.common.*;
-import antworld.common.AntAction.AntActionType;
-import antworld.server.Cell;
 
 public class Client
 {
-  private static final boolean DEBUG = false;
+  private static final boolean DEBUG = true;
   private final String mapFilePath = "resources/AntTestWorldDiffusion.png";
   private final TeamNameEnum myTeam;
   private static final long password = 962740848319L;//Each team has been assigned a random password.
@@ -23,28 +17,14 @@ public class Client
   private ObjectOutputStream outputStream = null;
   private boolean isConnected = false;
   private NestNameEnum myNestName = null;
-  //private MapManager mapManager;
   private Socket clientSocket;
-  //private HashMap<Integer, Ant> dataObjectmap;  //Must use ID as the key because antData is constantly changing
-  //private Ant ant;
-  //private Cell[][] geoMap;
-  //private FoodManager foodManager;
-  //private PathFinder pathfinder;
   private NestManager nestManager;
 
 
   private Client(String host, int portNumber, TeamNameEnum team)
   {
     nestManager = new NestManager(this, mapFilePath);
-    //mapManager = new MapManager("resources/AntTestWorldDiffusion.png");
-    //geoMap = mapManager.getGeoMap();
-    //pathfinder = new PathFinder(geoMap, mapManager.getMapWidth(), mapManager.getMapHeight());
-    //Ant.mapManager = mapManager;
-    //Ant.pathFinder = pathfinder;
     myTeam = team;
-    //dataObjectmap = new HashMap<>();
-    //foodManager = new FoodManager(dataObjectmap,pathfinder);
-    //foodManager.start();
     System.out.println("Starting " + team + " on " + host + ":" + portNumber + " at "
         + System.currentTimeMillis());
 
@@ -156,25 +136,16 @@ public class Client
     }
 
     myNestName = data.myNest;
+    NestManager.NESTX = data.nestData[myNestName.ordinal()].centerX;
+    NestManager.NESTY = data.nestData[myNestName.ordinal()].centerY;
     Ant.centerX = data.nestData[myNestName.ordinal()].centerX;
     Ant.centerY = data.nestData[myNestName.ordinal()].centerY;
     System.out.println("Client: ==== Nest Assigned ===>: " + myNestName);
     return data;
   }
 
-  /**
-   * @param data
-   * @todo find a way to add new ants to hashmap, currently just adds first 100, that should also solve when they die
-   */
   public void mainGameLoop(CommData data)
   {
-    /*
-    for (AntData ant : data.myAntList)
-    {
-      dataObjectmap.put(ant, new Ant(ant));
-    }
-    */
-
     nestManager.initializeAntMap(data);
 
     while (true)
@@ -236,52 +207,6 @@ public class Client
     return true;
   }
 
-  /*
-  private void chooseActionsOfAllAnts(CommData commData)
-  {
-    mapManager.regenerateExplorationVals();  //LATER: Should be called on seperate thread or something?
-    foodManager.readFoodSet(commData.foodSet);
-
-    for (AntData ant : commData.myAntList)
-    {
-      mapManager.updateCellExploration(ant.gridX,ant.gridY);
-      AntAction action = chooseAction(commData, ant);
-      ant.myAction = action;
-    }
-  }
-
-  private AntAction chooseAction(CommData data, AntData ant)
-  {
-    AntAction action = new AntAction(AntActionType.STASIS);
-    this.ant = dataObjectmap.get(ant);
-
-    if (ant.ticksUntilNextAction > 0) return action;
-
-    if (this.ant.exitNest(ant, action)) return action;
-
-    if (this.ant.attackEnemyAnt(ant, action)) return action;
-
-    if (this.ant.goToNest(ant, action)) return action;
-
-    if (this.ant.lastDir != null)
-    {
-      //if (this.ant.pickUpFood(ant, action)) return action;
-
-      //if (this.ant.pickUpWater(ant, action)) return action;
-    }
-
-    if (this.ant.goToEnemyAnt(ant, action)) return action;
-
-    if (this.ant.goToFood(ant, action)) return action;
-
-    if (this.ant.goToGoodAnt(ant, action)) return action;
-
-    if (this.ant.goExplore(ant, action)) return action;
-
-    return action;
-  }
-  */
-
   /**
    * The last argument is taken as the host name.
    * The default host is localhost.
@@ -296,8 +221,7 @@ public class Client
     if (args.length > 0) serverHost = args[args.length - 1];
 
     TeamNameEnum team;
-    //if (DEBUG) team = TeamNameEnum.John_Mauricio;
-    if (true) team = TeamNameEnum.John_Mauricio;
+    if (DEBUG) team = TeamNameEnum.John_Mauricio;
     else if (args.length > 1)
     {
       team = TeamNameEnum.getTeamByString(args[0]);

@@ -16,6 +16,12 @@ public enum GradientType
     {
       return -1;
     }
+  },
+  PATH{
+    public int polarity()
+    {
+      return 1;
+    }
   };
 
   public abstract int polarity();

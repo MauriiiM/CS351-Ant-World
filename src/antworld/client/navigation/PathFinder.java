@@ -19,8 +19,8 @@ import java.util.PriorityQueue;
  */
 public class PathFinder {
 
-  private Coordinate start;
-  private Coordinate end;
+  private int NESTX;
+  private int NESTY;
   private final int ELEVATIONCOST = 2;
   private StepComparator stepComparator;
   private PriorityQueue<Step> stepQueue;
@@ -29,14 +29,15 @@ public class PathFinder {
   private boolean[][] visited;
   private Cell[][] geoMap;  //The pathfinder's personal copy of the map to read
 
-  public PathFinder(Cell[][] geoMap, int mapWidth, int mapHeight)
+  public PathFinder(Cell[][] geoMap, int mapWidth, int mapHeight, int nestX, int nestY)
   {
+    NESTX = nestX;
+    NESTY = nestY;
     this.geoMap = geoMap;
     MAPWIDTH = mapWidth;
     MAPHEIGHT = mapHeight;
-    //this.elevationCost = elevationCost;
     stepComparator = new StepComparator();
-    stepQueue = new PriorityQueue<>(512, stepComparator);
+
   }
 
   private void drawPath(Path path)
@@ -76,19 +77,27 @@ public class PathFinder {
   }
 
   //Used by ants to request a new path to a location
-  public void requestPath(Ant ant, int x2, int y2, int x1, int y1)
+  public void requestAntPath(Ant ant, int x2, int y2, int x1, int y1)
   {
     ant.setPath(findPath(x2,y2,x1,y1));
   }
 
-  //Finds a path from the destination back to the origin
-  public Path findPath(int x2, int y2, int x1, int y1)
+  /**
+   * Finds a path from one point to another
+   * @param x2 - destination X
+   * @param y2 - destination Y
+   * @param x1 - origin X
+   * @param y1 - origin Y
+   * @return - Path between both points
+   */
+  public Path findPath(int x1, int y1, int x2, int y2)
   {
     visited = new boolean[MAPWIDTH][MAPHEIGHT];
+    stepQueue = new PriorityQueue<>(stepComparator);
     boolean foundPath = false;
     boolean pathBuilt = false;
-    this.start = new Coordinate(x1,y1,0);
-    this.end = new Coordinate(x2, y2);
+    Coordinate start = new Coordinate(x1,y1,0);
+    Coordinate end = new Coordinate(x2, y2);
     Step firstStep = new Step(start,null,end);
     visited[x1][y1] = true;
     stepQueue.add(firstStep);
@@ -99,6 +108,12 @@ public class PathFinder {
     while(!foundPath)
     {
       nextStep = stepQueue.poll();
+
+      if(nextStep == null)
+      {
+        System.err.println("Pathfinder Error: null pointer"); //Got a null pointer here once, have not seen it since. Could be deleted later.
+        System.exit(2);
+      }
       if(nextStep.getLocation().getX() == x2 && nextStep.getLocation().getY() == y2)
       {
         foundPath = true;
@@ -106,20 +121,19 @@ public class PathFinder {
       }
       else
       {
-        addNeighbors(nextStep);
+        addNeighbors(nextStep,end);
       }
     }
 
     Step lastStep = nextStep;
     pathTravelCost=lastStep.getTravelCostSoFar();
-    //System.out.println("Path travelCost = " + pathTravelCost);
     steps.add(lastStep.getLocation());
     while(!pathBuilt)
     {
       Step previousStep = lastStep.getLastStep();
       if(previousStep != null)
       {
-        steps.add(previousStep.getLocation());
+        steps.add(0,previousStep.getLocation());
       }
       else
       {
@@ -131,7 +145,7 @@ public class PathFinder {
     return new Path(start, end, steps, pathTravelCost);
   }
 
-  private void addNeighbors(Step currentStep)
+  private void addNeighbors(Step currentStep, Coordinate end)
   {
     int currentX = currentStep.getLocation().getX();
     int currentY = currentStep.getLocation().getY();

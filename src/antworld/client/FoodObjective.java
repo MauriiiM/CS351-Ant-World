@@ -1,5 +1,6 @@
 package antworld.client;
 
+import antworld.client.navigation.Path;
 import antworld.common.FoodData;
 
 import java.util.ArrayList;
@@ -15,13 +16,15 @@ public class FoodObjective
   private ArrayList<Ant> allocatedAnts;
   private int objectiveX = 0;
   private int objectiveY = 0;
+  private Path pathToNest = null;
 
-  public FoodObjective(FoodData foodSite)
+  public FoodObjective(FoodData foodSite, Path pathToNest)
   {
     this.foodSite = foodSite;
     objectiveX = foodSite.gridX;
     objectiveY = foodSite.gridY;
     allocatedAnts = new ArrayList<>();
+    this.pathToNest = pathToNest;
   }
 
   public void allocateAnt(Ant ant)
@@ -53,5 +56,10 @@ public class FoodObjective
   public int getObjectiveY()
   {
     return objectiveY;
+  }
+
+  public Path getPathToNest()
+  {
+    return pathToNest;
   }
 }

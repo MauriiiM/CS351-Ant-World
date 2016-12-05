@@ -1,5 +1,6 @@
 package antworld.client;
 
+import antworld.client.navigation.Coordinate;
 import antworld.client.navigation.MapManager;
 import antworld.client.navigation.PathFinder;
 import antworld.common.AntAction;
@@ -10,6 +11,8 @@ import antworld.server.Cell;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
 
 /**
  * Manages the ant nest and is the point of contact between the client and the AI
@@ -18,15 +21,15 @@ import java.util.HashMap;
 public class NestManager
 {
   private Client client;
+  public static int NESTX;
+  public static int NESTY;
   private final String mapFilePath; //"resources/AntTestWorldDiffusion.png"
   private MapManager mapManager;
   private PathFinder pathFinder;
   private FoodManager foodManager;
-  private AntManager antManager;
   private HashMap<Integer, Ant> antMap;  //Must use ID as the key because antData is constantly changing
   private Ant ant;
   private Cell[][] geoMap;
-  private static final int MINFOODRESPONSE = 200; //If an ant is within 200 cells of a food site, it will navigate to the food site
 
 
   public NestManager(Client client, String mapFilePath)
@@ -35,29 +38,46 @@ public class NestManager
     this.mapFilePath = mapFilePath;
     mapManager = new MapManager(mapFilePath);
     geoMap = mapManager.getGeoMap();
-    pathFinder = new PathFinder(geoMap, mapManager.getMapWidth(), mapManager.getMapHeight());
+    pathFinder = new PathFinder(geoMap, mapManager.getMapWidth(), mapManager.getMapHeight(),NESTX,NESTY);
     antMap = new HashMap<>();
     foodManager = new FoodManager(antMap,pathFinder);
     foodManager.start();
     Ant.mapManager = mapManager;
     Ant.pathFinder = pathFinder;
-
   }
 
-  public void updateCommData(CommData commData)
+  /**
+   * Actually calculates the distance between two points by estimating Euclidean distance!
+   * @param x1
+   * @param y1
+   * @param x2
+   * @param y2
+   */
+  public static int calculateDistance(int x1,int y1,int x2,int y2)
   {
-
+    int deltaX = Math.abs(x1-x2);
+    int deltaY = Math.abs(y1-y2);
+    int distance = deltaX + deltaY;
+    distance = (distance*2)/3;  //This is what Joel's util was missing
+    return distance;
   }
 
   //Updates every Ant's reference to it's updated AntData variable sent from the server
-  private void updateAntMapData(ArrayList<AntData> antList)
+  private void updateAntMapData(ArrayList<AntData> antList,HashSet<FoodData> foodSet)
   {
     Ant nextAnt;
-    for(AntData newData : antList)
+    LinkedList<Coordinate> objectLocations = new LinkedList<>(); //Does this need to be volatile?
+    for(AntData antData : antList)
     {
-      nextAnt = antMap.get(newData.id);
-      nextAnt.setAntData(newData);
+      nextAnt = antMap.get(antData.id);
+      nextAnt.setAntData(antData);
+      objectLocations.add(new Coordinate(antData.gridX,antData.gridY));
     }
+    for(FoodData foodData : foodSet)
+    {
+      objectLocations.add(new Coordinate(foodData.gridX,foodData.gridY));
+    }
+    mapManager.updateCellOccupied(objectLocations);
   }
 
   /**
@@ -78,10 +98,15 @@ public class NestManager
    */
   public void chooseActionsOfAllAnts(CommData commData)
   {
-    updateAntMapData(commData.myAntList);
+    updateAntMapData(commData.myAntList,commData.foodSet);
     mapManager.regenerateExplorationVals();  //LATER: Should be called on seperate thread or something?
-    FoodData[] foodArray = commData.foodSet.toArray(new FoodData[commData.foodSet.size()]); //Create a FoodData array for the food manager to read. This keeps the foodset thread safe.
-    foodManager.readFoodSet(foodArray);
+
+    HashSet<FoodData> foodSet = commData.foodSet;
+    if(foodSet.size() > 0)  //If the foodSet is greater than 0, send a copy to the food manager
+    {
+      FoodData[] foodArray = foodSet.toArray(new FoodData[foodSet.size()]); //Create a FoodData array for the food manager to read. This keeps the foodset thread safe.
+      foodManager.setFoodSet(foodArray);
+    }
 
     AntData nextAntData;
     for (Integer id : antMap.keySet())
@@ -108,7 +133,7 @@ public class NestManager
 
     if (this.ant.lastDir != null)
     {
-      //if (this.ant.pickUpFood(ant, action)) return action;
+      //if (this.ant.pickUpFood(ant, action)) return action;  //Don't think we need this anymore.
 
       //if (this.ant.pickUpWater(ant, action)) return action;
     }

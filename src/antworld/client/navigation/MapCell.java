@@ -11,27 +11,49 @@ import antworld.server.Cell;
 public class MapCell extends Cell
 {
 
+  private boolean occupied = false; //True if currently occupied by an ant
   private int foodProximityVal; //How close this cell is to food
   private int explorationVal; //Has this cell been explored or has it been a while since it was explored?
+  private int pathVal;  //How close is this cell to the start of a path
 
 
   public MapCell(LandType landType, int height, int x, int y)
   {
-    super(landType,height,x,y);
+    super(landType,height,x,y);   //todo: Are we allowed to extend classes from the server? If not, no big deal.
     foodProximityVal = 0;
     if(landType == LandType.WATER || landType == LandType.NEST)
     {
-      this.explorationVal = 0;
+      if(landType == LandType.WATER)
+      {
+        this.explorationVal = -10;
+      }
+      else
+      {
+        this.explorationVal = 0;
+      }
     }
     else
     {
       this.explorationVal = 1000;
     }
+  }
 
+  public boolean getOccupied()
+  {
+    return  occupied;
+  }
+
+  public void setOccupied(boolean newState)
+  {
+    occupied = newState;
   }
 
   public int getExplorationVal()
   {
+    if(occupied)
+    {
+      return 0;
+    }
     return this.explorationVal;
   }
 
@@ -42,11 +64,29 @@ public class MapCell extends Cell
 
   public int getFoodProximityVal()
   {
+    if(occupied)
+    {
+      return 0;
+    }
     return this.foodProximityVal;
   }
 
   public void setFoodProximityVal(int newVal)
   {
     this.foodProximityVal = newVal;
+  }
+
+  public int getPathVal()
+  {
+    if(occupied)
+    {
+      return 0;
+    }
+    return this.pathVal;
+  }
+
+  public void setPathVal(int newVal)
+  {
+    this.pathVal = newVal;
   }
 }
