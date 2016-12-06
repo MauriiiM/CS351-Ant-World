@@ -16,6 +16,7 @@ public class FoodObjective
   private ArrayList<Ant> allocatedAnts;
   private int objectiveX = 0;
   private int objectiveY = 0;
+  private volatile int foodLeft;
   private Path pathToNest = null;
 
   public FoodObjective(FoodData foodSite, Path pathToNest)
@@ -23,6 +24,7 @@ public class FoodObjective
     this.foodSite = foodSite;
     objectiveX = foodSite.gridX;
     objectiveY = foodSite.gridY;
+    foodLeft = foodSite.getCount();
     allocatedAnts = new ArrayList<>();
     this.pathToNest = pathToNest;
   }
@@ -33,6 +35,20 @@ public class FoodObjective
     ant.setFoodObjective(this);
   }
 
+  public void reduceFoodLeft(int amount)
+  {
+    foodLeft = foodLeft - amount;
+    if(foodLeft < 0)
+    {
+      foodLeft = 0;
+    }
+  }
+
+  public int getFoodLeft()
+  {
+    return foodLeft;
+  }
+
   public void unallocateAnt(Ant ant)
   {
     allocatedAnts.remove(ant);
@@ -41,6 +57,11 @@ public class FoodObjective
   public FoodData getFoodData()
   {
     return foodSite;
+  }
+
+  public void setFoodData(FoodData newData)
+  {
+    this.foodSite = newData;
   }
 
   public ArrayList<Ant> getAllocatedAnts()
