@@ -143,9 +143,21 @@ public class MapManager
     writeGradientToMap(pathStartX, pathStartY, PATHSTARTRADIUS, pathStartGradient.getGradient(),GradientType.PATH);
   }
 
+  public void removePathProximityGradient(int x, int y)
+  {
+    System.err.println("ERASING PATH GRADIENT");
+    eraseGradientFromMap(x,y,PATHSTARTRADIUS,GradientType.PATH);
+  }
+
   public void updateCellFoodProximity(int foodX, int foodY)
   {
     writeGradientToMap(foodX,foodY,FOODRADIUS,foodGradient.getGradient(),GradientType.FOOD);
+  }
+
+  public void removeFoodProximityGradient(int foodX, int foodY)
+  {
+    System.err.println("ERASING FOOD GRADIENT");
+    eraseGradientFromMap(foodX,foodY,FOODRADIUS,GradientType.FOOD);
   }
 
   public void updateCellExploration(int explorerX, int explorerY)
@@ -306,6 +318,58 @@ public class MapManager
               case PATH:
                 nextVal *= PATH.polarity();
                 world[nextX][nextY].setPathVal(nextVal);
+                break;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  private void eraseGradientFromMap(int x, int y, int radius, GradientType type)
+  {
+    synchronized (world) {
+      int diameter = (radius*2) +1;
+      int nextX;
+      int nextY;
+
+      for (int i = 0; i < diameter; i++) {
+
+        if (i < radius) {
+          nextX = x - (radius - i);
+        } else if (i > radius) {
+          nextX = x + (i - radius);
+        } else {
+          nextX = x;
+        }
+
+        for (int j = 0; j < diameter; j++) {
+
+
+          if (j < radius) {
+            nextY = y - (radius - j);
+          } else if (j > radius) {
+            nextY = y + (j - radius);
+          } else {
+            nextY = y;
+          }
+
+          if (nextX < 0 || nextX >= mapWidth || nextY < 0 || nextY >= mapHeight) {
+            //System.err.println("INDEX OUT OF BOUND!");
+            continue;
+          }
+
+          if(world[nextX][nextY].getLandType() != LandType.WATER) //If this is not a water cell
+          {
+            switch (type) {
+              case FOOD:
+                world[nextX][nextY].setFoodProximityVal(0);
+                break;
+              case EXPLORE:
+                world[nextX][nextY].setExplorationVal(0);
+                break;
+              case PATH:
+                world[nextX][nextY].setPathVal(0);
                 break;
             }
           }

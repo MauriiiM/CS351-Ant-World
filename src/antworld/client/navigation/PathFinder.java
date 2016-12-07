@@ -111,7 +111,7 @@ public class PathFinder {
 
       if(nextStep == null)
       {
-        System.err.println("Pathfinder Error: null pointer"); //Got a null pointer here once, have not seen it since. Could be deleted later.
+        System.err.println("Pathfinder Error: null pointer"); //Got a null pointer here twice!, have not seen it since. Could be deleted later.
         System.exit(2);
       }
       if(nextStep.getLocation().getX() == x2 && nextStep.getLocation().getY() == y2)

@@ -156,7 +156,7 @@ public class Client
         nestManager.chooseActionsOfAllAnts(data);   //Send the commData to the nest manager to work with
         CommData sendData = data.packageForSendToServer();  //Send the commData back to the server onces the nest manager is done
 
-        System.out.println("Client: Sending>>>>>>>: " + sendData);
+        //System.out.println("Client: Sending>>>>>>>: " + sendData);
         outputStream.writeObject(sendData);
         outputStream.flush();
         outputStream.reset();
@@ -164,7 +164,7 @@ public class Client
         if (DEBUG) System.out.println("Client: listening to socket....");
         CommData receivedData = (CommData) inputStream.readObject();
         if (DEBUG)
-          System.out.println("Client: received <<<<<<<<<" + inputStream.available() + "<...\n" + receivedData);
+          //System.out.println("Client: received <<<<<<<<<" + inputStream.available() + "<...\n" + receivedData);
         data = receivedData;
 
         if ((myNestName == null) || (data.myTeam != myTeam))
