@@ -46,7 +46,7 @@ public class ConstantPaths
     {
       for (int y = 0; y < mapImage.getHeight(); y++)
       {
-        pixel = mapImage.getRaster().getPixel(x, y, new int[3]);
+        pixel = mapImage.getRaster().getPixel(x, y, new int[4]);
         if (pixel[0] == 0 && pixel[1] == 0 && pixel[2] == 0) //black = center of nest
         {
           nestXY[nestNum] = new Point();
@@ -54,14 +54,6 @@ public class ConstantPaths
           System.out.println("nest at(" + x + ", " + y + ")");
           waterXY[nestNum] = findNearestWater(nestXY[nestNum]);
           nestNum++;
-          try
-          {
-            ImageIO.write(mapImage, "PNG", new File("/Users/mauricio/Documents/CS351/AntWorld/resources/AntWorldSpiralTest.png"));
-          }
-          catch (IOException ie)
-          {
-            ie.printStackTrace();
-          }
         }
       }
     }
@@ -70,26 +62,29 @@ public class ConstantPaths
   private Point findNearestWater(Point nest)
   {
     Point waterPoint = new Point();
-    int x = (int) nest.getX();
-    int y = (int) nest.getY();
-    int dx = 0, dy = -1;
+    int X = (int) nest.getX();
+    int Y = (int) nest.getY();
+    int x = 0, y = 0;
+    int dx = 0, mid, dy = -1;
 
-    while (geomap[x][y].getLandType() != LandType.WATER)
+    while (geomap[x + X][y + Y].getLandType() != LandType.WATER)
     {
-      if ((x == nest.getX() && y == nest.getY())
-          || (x > nest.getX() && x == (nest.getX() + 1) - y)
-          || (x < nest.getX() && x == -y))
+      if ((-X / 2 <= x) && (x <= X / 2) && (-Y / 2 <= y) && (y <= Y / 2))
       {
+        mapImage.setRGB(x + X, y + Y, LandType.NEST.getMapColor());
+      }
+      if ((x == y) || ((x < 0) && (x == -y)) || ((x > 0) && (x == 1 - y)))
+      {
+        mid = dx;
         dx = -dy;
-        dy = dx;
+        dy = mid;
       }
       x += dx;
       y += dy;
-      mapImage.setRGB(x, y, LandType.NEST.getMapColor());
     }
-    if (geomap[x][y].getLandType() == LandType.WATER)
+    if (geomap[x + X][y + Y].getLandType() == LandType.WATER)
     {
-      System.out.println("water at(" + x + ", " + y + ")");
+      System.out.println("water at(" + x + X + ", " + y + Y + ")");
       waterPoint.setLocation(x, y);
     }
 
