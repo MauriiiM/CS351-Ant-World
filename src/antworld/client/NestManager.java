@@ -116,12 +116,28 @@ public class NestManager
       AntAction action = chooseAction(commData, nextAntData);
       nextAntData.myAction = action;
     }
+
+    //Used for testing food gradient write/erase
+    /*
+    if(commData.gameTick%600==0)
+    {
+      System.out.println("GAME TICK = " + commData.gameTick);
+      //mapManager.printFoodMap();
+    }
+    */
   }
 
   private AntAction chooseAction(CommData data, AntData ant)
   {
     AntAction action = new AntAction(AntAction.AntActionType.STASIS);
     this.ant = antMap.get(ant.id);
+
+    if(!this.ant.completedLastAction) //If it did not complete it's last action, resend
+    {
+      System.err.println("resending data for: ant: " + this.ant.getAntData().toString());
+      System.err.println("\treturning: " + this.ant.getAntData().myAction);
+      return this.ant.getAntData().myAction;
+    }
 
     if (ant.ticksUntilNextAction > 0) return action;
 
@@ -145,7 +161,7 @@ public class NestManager
     if (this.ant.goToGoodAnt(ant, action)) return action;
 
     if (this.ant.goExplore(ant, action)) return action;
-
+    this.ant.getAntData().myAction = action;
     return action;
   }
 }

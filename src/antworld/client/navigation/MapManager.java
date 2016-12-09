@@ -135,6 +135,117 @@ public class MapManager
     return mapHeight;
   }
 
+  public void printFoodMap()
+  {
+    int nextVal;
+    synchronized (world)
+    {
+      System.out.println("FOOD MAP:*****************************************************************************************************************************");
+      for(int j=0;j<mapHeight;j++)
+      {
+        for(int cellLine=0; cellLine < 4; cellLine ++)
+        {
+          for(int i=0;i<mapWidth;i++) {
+
+            if(world[i][j].getLandType()!= LandType.WATER)
+            {
+              if(cellLine == 0) //Print food val
+              {
+                nextVal = world[i][j].getFoodProximityVal();
+                if(nextVal == 0)
+                {
+                  if(world[i][j].getOccupied())
+                  {
+                    System.out.print("*@@*|");
+                  }
+                  else
+                  {
+                    System.out.print("...0|");
+                  }
+
+                }
+                else if(nextVal < 10)  //1 digit number
+                {
+                  System.out.print("..." + nextVal + "|");
+                }
+                else if(nextVal < 100) //2 digit number
+                {
+                  System.out.print(".." + nextVal + "|");
+                }
+                else if(nextVal < 1000) //3 digit number
+                {
+                  System.out.print("." + nextVal + "|");
+                }
+                else //4 digit number
+                {
+                  System.out.print(nextVal + "|");
+                }
+              }
+              else if(cellLine == 1) // print X coord
+              {
+                nextVal = i;
+                if(nextVal == 0)
+                {
+                  System.out.print("...0|");
+                }
+                else if(nextVal < 10)  //1 digit number
+                {
+                  System.out.print("..." + nextVal + "|");
+                }
+                else if(nextVal < 100) //2 digit number
+                {
+                  System.out.print(".." + nextVal + "|");
+                }
+                else if(nextVal < 1000) //3 digit number
+                {
+                  System.out.print("." + nextVal + "|");
+                }
+                else //4 digit number
+                {
+                  System.out.print(nextVal + "|");
+                }
+              }
+              else if(cellLine == 2) // print y coord
+              {
+                nextVal = j;
+                if(nextVal == 0)
+                {
+                  System.out.print("...0|");
+                }
+                else if(nextVal < 10)  //1 digit number
+                {
+                  System.out.print("..." + nextVal + "|");
+                }
+                else if(nextVal < 100) //2 digit number
+                {
+                  System.out.print(".." + nextVal + "|");
+                }
+                else if(nextVal < 1000) //3 digit number
+                {
+                  System.out.print("." + nextVal + "|");
+                }
+                else //4 digit number
+                {
+                  System.out.print(nextVal + "|");
+                }
+              }
+              else if(cellLine == 3)  //Print bottom
+              {
+                System.out.print("....|");
+              }
+            }
+            else
+            {
+              System.out.print("~~~~|");
+            }
+          }
+          System.out.println("");
+        }
+      }
+      System.out.println("END MAP:*****************************************************************************************************************************");
+    }
+  }
+
   /*
    *@todo: Need a function to erase the gradients once a food source is depleted. (food gradient and path start gradient)
    */
@@ -303,8 +414,11 @@ public class MapManager
           {
             switch (type) {
               case FOOD:
-                nextVal *= FOOD.polarity();
-                world[nextX][nextY].setFoodProximityVal(nextVal);
+                int currentVal = world[nextX][nextY].getFoodProximityVal(); //This prevents gradients from overlapping when food sites are close
+                if(nextVal > currentVal)  //Only update this cell if the next gradient value is higher than the cells current value
+                {
+                  world[nextX][nextY].setFoodProximityVal(nextVal);
+                }
                 break;
               case EXPLORE:
                 exploredRecently.add(world[nextX][nextY]);  //Add the new cell to exploredRecently to regenerate its exploration over time

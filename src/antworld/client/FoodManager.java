@@ -194,8 +194,8 @@ public class FoodManager extends Thread
 
     for (Integer antData : antMap.keySet())
     {
-      Ant ant = antMap.get(antData);
-      if(ant.getCurrentGoal() != Goal.RETURNTONEST) //If the ant was not already returning to the nest for a reason/ant is available to go collect food
+      Ant ant = antMap.get(antData);                                                 //Need to make sure that the ant is not underground either!
+      if(ant.getCurrentGoal() != Goal.RETURNTONEST && !ant.getAntData().underground) //If the ant was not already returning to the nest for a reason/ant is available to go collect food
       {
         antQueue.add(ant);
       }
