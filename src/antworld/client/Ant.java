@@ -25,6 +25,7 @@ public class Ant
   int pathStepCount;
   private boolean randomWalk = false;
   boolean completedLastAction = false;
+  private boolean checkAttritionDamage = false;
   private int randomSteps = 0;
   private Goal currentGoal = Goal.EXPLORE;
   FoodObjective foodObjective = null;
@@ -59,6 +60,11 @@ public class Ant
   public AntData getAntData()
   {
     return this.antData;
+  }
+
+  public void setCheckAttritionDamage(boolean state)
+  {
+    checkAttritionDamage = state;
   }
 
   //only called when ant's in the nest and will be true
@@ -136,9 +142,14 @@ public class Ant
         endPath();
         currentGoal = Goal.EXPLORE;
       }
-      else
+      else if(!hasPath && antData.carryUnits > 0)  //If the ant doesn't have a path yet, but is carrying food
       {
         findPathToNest(action);
+      }
+      else if(!hasPath && antData.carryUnits == 0)  //If the ant doesn't have a path, but it needs to go home
+      {
+        //System.err.println("Ant: " + antData.toString() + " REQUESTING PATH HOME!");
+        NestManager.pathFinder.requestAntPath(this, antData.gridX, antData.gridY, centerX, centerY);
       }
       return true;
     }
@@ -714,6 +725,20 @@ public class Ant
     if (currentGoal != Goal.EXPLORE)
     {
       return false;
+    }
+
+    if(checkAttritionDamage)  //Called once every 5,000 frames (when an ant should have lost 1 health of attrition damage)
+    {
+      int distanceToNest = NestManager.calculateDistance(antData.gridX,antData.gridY,centerX,centerY);
+      int ticksToGetHome = distanceToNest*2;  //Not accounting for elevation
+      int approxTripAttrition = ticksToGetHome/5000; //5000 ticks per unit of attrition damage
+
+      if(antData.health - approxTripAttrition <= 8) //If the ant can make it home with 8 or less health, it should head back to the nest
+      {
+        currentGoal = Goal.RETURNTONEST;
+      }
+
+      checkAttritionDamage = false;
     }
 
     Direction dir;

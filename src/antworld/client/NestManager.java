@@ -25,8 +25,9 @@ public class NestManager
   public static int NESTY;
   private final String mapFilePath; //"resources/AntTestWorldDiffusion.png"
   private MapManager mapManager;
-  private PathFinder pathFinder;
+  public static PathFinder pathFinder;
   private FoodManager foodManager;
+  //private EnemyManager enemyManager;
   private HashMap<Integer, Ant> antMap;  //Must use ID as the key because antData is constantly changing
   private Ant ant;
   private Cell[][] geoMap;
@@ -42,6 +43,8 @@ public class NestManager
     antMap = new HashMap<>();
     foodManager = new FoodManager(antMap,pathFinder);
     foodManager.start();
+    //enemyManager = new EnemyManager(antMap,pathFinder);
+    //enemyManager.start();
     Ant.mapManager = mapManager;
     Ant.pathFinder = pathFinder;
   }
@@ -100,6 +103,7 @@ public class NestManager
   {
     updateAntMapData(commData.myAntList,commData.foodSet);
     mapManager.regenerateExplorationVals();  //LATER: Should be called on seperate thread or something?
+    mapManager.fadeEnemyProximityGradient();
 
     HashSet<FoodData> foodSet = commData.foodSet;
     if(foodSet.size() > 0)  //If the foodSet is greater than 0, send a copy to the food manager
@@ -108,11 +112,28 @@ public class NestManager
       foodManager.setFoodSet(foodArray);
     }
 
+    /*
+    HashSet<AntData> enemySet = commData.enemyAntSet;
+    if(enemySet.size() > 0)  //If the foodSet is greater than 0, send a copy to the food manager
+    {
+      AntData[] enemyArray = enemySet.toArray(new AntData[enemySet.size()]); //Create a FoodData array for the food manager to read. This keeps the foodset thread safe.
+      enemyManager.setEnemySet(enemyArray);
+    }
+    */
+
+    Ant nextAnt;
     AntData nextAntData;
     for (Integer id : antMap.keySet())
     {
-      nextAntData = antMap.get(id).getAntData();
+      nextAnt = antMap.get(id);
+      nextAntData = nextAnt.getAntData();
       mapManager.updateCellExploration(nextAntData.gridX,nextAntData.gridY);
+
+      if(commData.gameTick%5000 == 0 && nextAnt.getCurrentGoal() == Goal.EXPLORE) //If the ant is out exploring, check attrition damage to see if it should head to nest
+      {
+        nextAnt.setCheckAttritionDamage(true);
+      }
+
       AntAction action = chooseAction(commData, nextAntData);
       nextAntData.myAction = action;
     }

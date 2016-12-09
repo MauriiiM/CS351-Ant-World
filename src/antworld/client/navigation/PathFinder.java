@@ -79,7 +79,10 @@ public class PathFinder {
   //Used by ants to request a new path to a location
   public void requestAntPath(Ant ant, int x2, int y2, int x1, int y1) //If we use this, make sure ant is not underground when requesting path!
   {
-    ant.setPath(findPath(x2,y2,x1,y1));
+    if(!ant.getAntData().underground)
+    {
+      ant.setPath(findPath(x2,y2,x1,y1));
+    }
   }
 
   /**
