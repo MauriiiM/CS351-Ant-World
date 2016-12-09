@@ -132,6 +132,16 @@ public class Ant
     {
       if (hasPath && pathStepCount < path.getPath().size() - 1)
       {
+        int deltaX = Math.abs(centerX - antData.gridX);
+        int deltaY = Math.abs(centerY - antData.gridY);
+        if((deltaX + deltaY) <= 20)  //If the ant is less than 20 cells away from the center of the nest, it must be on the nest.
+        {
+          action.type = enterNest();
+          endPath();
+          currentGoal = Goal.EXPLORE;
+          return true;
+        }
+
         action.type = AntAction.AntActionType.MOVE;
         action.direction = xyCoordinateToDirection(path.getPath().get(pathStepCount).getX(), path.getPath().get(pathStepCount).getY(), ant.gridX, ant.gridY);
         pathStepCount++;
