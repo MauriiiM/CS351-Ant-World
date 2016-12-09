@@ -69,6 +69,12 @@ public class Ant
     return true;
   }
 
+  boolean healSelf(AntAction action)
+  {
+    action.type = AntAction.AntActionType.HEAL;
+    return true;
+  }
+
   AntAction.AntActionType enterNest()
   {
     endPath();
@@ -83,6 +89,11 @@ public class Ant
       if (ant.carryUnits > 0)
       {
         return dropFood(ant, action);
+      }
+
+      if(ant.health < 20)
+      {
+        return healSelf(action);
       }
 
       int exitX = centerX - (Constants.NEST_RADIUS - 1) + random.nextInt(2 * (Constants.NEST_RADIUS - 1));
@@ -203,7 +214,7 @@ public class Ant
     if (nextX < antX && nextY > antY) return Direction.SOUTHWEST;
     if (nextX < antX && nextY == antY) return Direction.WEST;
     if (nextX < antX && nextY < antY) return Direction.NORTHWEST;
-    System.err.println("NO DIRECTION!! nextX= " + nextX + " nextY= " + nextY + " antX=" + antX + " antY=" + antY);
+    //System.err.println("NO DIRECTION!! nextX= " + nextX + " nextY= " + nextY + " antX=" + antX + " antY=" + antY);
     return null;
   }
 
@@ -493,10 +504,10 @@ public class Ant
       }
     }
 
-    System.err.println("Ant: " + antData.toString() + " : bestValSoFar = " + bestValSoFar);
+    //System.err.println("Ant: " + antData.toString() + " : bestValSoFar = " + bestValSoFar);
     if(bestValSoFar == 0) //If no direction is good, get a general heading and go in that direction
     {
-      System.err.println("DEAD RECKONING...");
+      //System.err.println("DEAD RECKONING...");
       //bestDirection = xyCoordinateToDirection(foodObjective.getObjectiveX(),foodObjective.getObjectiveY(),x,y);
       //System.exit(3);
     }
@@ -645,12 +656,12 @@ public class Ant
     {
       return false;
     }
-    System.err.println("GoToFood Ant: " + antData.toString() + " hasPath = " + hasPath + " : followGradient= " + followFoodGradient);
+    //System.err.println("GoToFood Ant: " + antData.toString() + " hasPath = " + hasPath + " : followGradient= " + followFoodGradient);
     if(hasPath) //If the ant has a path, follow it
     {
       if (pathStepCount < path.getPath().size() - 1) //If the ant has not reached the end of the path
       {
-        System.err.println("Ant: " + antData.toString() + " FOLLOWING PATH");
+        //System.err.println("Ant: " + antData.toString() + " FOLLOWING PATH");
         action.type = AntAction.AntActionType.MOVE;
         action.direction = xyCoordinateToDirection(path.getPath().get(pathStepCount).getX(), path.getPath().get(pathStepCount).getY(), ant.gridX, ant.gridY);
         pathStepCount++;
@@ -669,7 +680,7 @@ public class Ant
 
     if (followFoodGradient)
     {
-      System.err.println("Ant: " + antData.toString() + " FOLLOWING GRADIENT");
+      //System.err.println("Ant: " + antData.toString() + " FOLLOWING GRADIENT");
       int distanceToFoodX = Math.abs(antData.gridX - foodObjective.getObjectiveX());
       int distanceToFoodY = Math.abs(antData.gridY - foodObjective.getObjectiveY());
 
