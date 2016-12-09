@@ -77,7 +77,7 @@ public class PathFinder {
   }
 
   //Used by ants to request a new path to a location
-  public void requestAntPath(Ant ant, int x2, int y2, int x1, int y1)
+  public void requestAntPath(Ant ant, int x2, int y2, int x1, int y1) //If we use this, make sure ant is not underground when requesting path!
   {
     ant.setPath(findPath(x2,y2,x1,y1));
   }
@@ -110,8 +110,8 @@ public class PathFinder {
       nextStep = stepQueue.poll();
 
       if(nextStep == null)
-      {
-        System.err.println("Pathfinder Error: null pointer"); //Got a null pointer here twice!, have not seen it since. Could be deleted later.
+      {                                                         //todo: FIGURE THIS OUT!!!!!!!!!
+        System.err.println("Pathfinder Error: null pointer"); //Got a null pointer here three times!, have not seen it since. Could be deleted later.
         System.exit(2);
       }
       if(nextStep.getLocation().getX() == x2 && nextStep.getLocation().getY() == y2)

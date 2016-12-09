@@ -1,12 +1,9 @@
 package antworld.client;
 
-import antworld.client.navigation.MapCell;
 import antworld.client.navigation.MapManager;
 import antworld.client.navigation.Path;
 import antworld.client.navigation.PathFinder;
 import antworld.common.*;
-
-import java.util.ArrayList;
 import java.util.Random;
 
 /**
@@ -27,6 +24,7 @@ public class Ant
   Path path;
   int pathStepCount;
   private boolean randomWalk = false;
+  boolean completedLastAction = false;
   private int randomSteps = 0;
   private Goal currentGoal = Goal.EXPLORE;
   FoodObjective foodObjective = null;
@@ -40,6 +38,22 @@ public class Ant
   public void setAntData(AntData newData)
   {
     this.antData = newData;
+
+    //Verify antData from server matches old antData indicating that the last action was completed.
+    if(newData.myAction.type == this.antData.myAction.type) {
+      this.antData = newData;
+      completedLastAction = true;
+    }
+    else
+    {
+      System.err.println("Ant: " + antData.toString() + "antData action= " + antData.myAction.type + " newData = " + newData.myAction.type);
+      System.err.println("\tMISSED A STEP!!!");
+      //System.exit(3);
+      newData.myAction = this.antData.myAction;
+      this.antData = newData;
+      completedLastAction = false;
+    }
+
   }
 
   public AntData getAntData()
@@ -61,6 +75,7 @@ public class Ant
     return AntAction.AntActionType.ENTER_NEST;
   }
 
+  //Ants always exit nest at a random edge of the nest
   boolean exitNest(AntData ant, AntAction action)
   {
     if (ant.underground)
@@ -70,9 +85,22 @@ public class Ant
         return dropFood(ant, action);
       }
 
+      int exitX = centerX - (Constants.NEST_RADIUS - 1) + random.nextInt(2 * (Constants.NEST_RADIUS - 1));
+      int deltaX = Math.abs(centerX - exitX);
+      int exitY;
+      int deltaY = 20-deltaX;
+      if(random.nextBoolean())
+      {
+        exitY = centerY + deltaY;
+      }
+      else
+      {
+        exitY = centerY - deltaY;
+      }
+
       action.type = AntAction.AntActionType.EXIT_NEST;
-      action.x = centerX - (Constants.NEST_RADIUS - 1) + random.nextInt(2 * (Constants.NEST_RADIUS - 1));
-      action.y = centerY - (Constants.NEST_RADIUS - 1) + random.nextInt(2 * (Constants.NEST_RADIUS - 1));
+      action.x = exitX;
+      action.y = exitY;
       return true;
     }
     return false;
@@ -381,64 +409,98 @@ public class Ant
 
   private Direction getBestDirectionToFood(int x, int y)
   {
-    int foodValNorth = getFoodGradientVal(x,y,Direction.NORTH);
-    int bestValSoFar = foodValNorth;
-    Direction bestDirection = Direction.NORTH;
+    Direction heading = xyCoordinateToDirection(foodObjective.getObjectiveX(),foodObjective.getObjectiveY(),x,y);
+    int bestValSoFar = 0;
+    Direction bestDirection = heading;
 
-    int foodValNE = getFoodGradientVal(x,y,Direction.NORTHEAST);
-    if(foodValNE > bestValSoFar)
+    if(heading == Direction.NORTH || heading == Direction.NORTHEAST || heading == Direction.NORTHWEST)
     {
-      bestValSoFar = foodValNE;
-      bestDirection = Direction.NORTHEAST;
+      int foodValNorth = getFoodGradientVal(x,y,Direction.NORTH);
+      if(foodValNorth > bestValSoFar)
+      {
+        bestValSoFar = foodValNorth;
+        bestDirection = Direction.NORTH;
+      }
     }
 
-    int foodValNW = getFoodGradientVal(x,y,Direction.NORTHWEST);
-    if(foodValNW > bestValSoFar)
+    if(heading == Direction.NORTH || heading == Direction.NORTHEAST || heading == Direction.EAST)
     {
-      bestValSoFar = foodValNW;
-      bestDirection = Direction.NORTHWEST;
+      int foodValNE = getFoodGradientVal(x,y,Direction.NORTHEAST);
+      if(foodValNE > bestValSoFar)
+      {
+        bestValSoFar = foodValNE;
+        bestDirection = Direction.NORTHEAST;
+      }
     }
 
-    int foodValSouth = getFoodGradientVal(x,y,Direction.SOUTH);
-    if(foodValSouth > bestValSoFar)
+    if(heading == Direction.NORTH || heading == Direction.NORTHWEST || heading == Direction.WEST)
     {
-      bestValSoFar = foodValSouth;
-      bestDirection = Direction.SOUTH;
+      int foodValNW = getFoodGradientVal(x,y,Direction.NORTHWEST);
+      if(foodValNW > bestValSoFar)
+      {
+        bestValSoFar = foodValNW;
+        bestDirection = Direction.NORTHWEST;
+      }
     }
 
-    int foodValSE = getFoodGradientVal(x,y,Direction.SOUTHEAST);
-    if(foodValSE > bestValSoFar)
+    if(heading == Direction.SOUTH || heading == Direction.SOUTHEAST || heading == Direction.SOUTHWEST)
     {
-      bestValSoFar = foodValSE;
-      bestDirection = Direction.SOUTHEAST;
+      int foodValSouth = getFoodGradientVal(x,y,Direction.SOUTH);
+      if(foodValSouth > bestValSoFar)
+      {
+        bestValSoFar = foodValSouth;
+        bestDirection = Direction.SOUTH;
+      }
     }
 
-    int foodValSW = getFoodGradientVal(x,y,Direction.SOUTHWEST);
-    if(foodValSW > bestValSoFar)
+    if(heading == Direction.SOUTH || heading == Direction.SOUTHEAST || heading == Direction.EAST)
     {
-      bestValSoFar = foodValSW;
-      bestDirection = Direction.SOUTHWEST;
+      int foodValSE = getFoodGradientVal(x,y,Direction.SOUTHEAST);
+      if(foodValSE > bestValSoFar)
+      {
+        bestValSoFar = foodValSE;
+        bestDirection = Direction.SOUTHEAST;
+      }
     }
 
-    int foodValEast = getFoodGradientVal(x,y,Direction.EAST);
-    if(foodValEast > bestValSoFar)
+    if(heading == Direction.SOUTH || heading == Direction.SOUTHWEST || heading == Direction.WEST)
     {
-      bestValSoFar = foodValEast;
-      bestDirection = Direction.EAST;
+      int foodValSW = getFoodGradientVal(x,y,Direction.SOUTHWEST);
+      if(foodValSW > bestValSoFar)
+      {
+        bestValSoFar = foodValSW;
+        bestDirection = Direction.SOUTHWEST;
+      }
     }
 
-    int foodValWest = getFoodGradientVal(x,y,Direction.WEST);
-    if(foodValWest > bestValSoFar)
+    if(heading == Direction.EAST || heading == Direction.NORTHEAST || heading == Direction.SOUTHEAST)
     {
-      bestDirection = Direction.WEST;
+      int foodValEast = getFoodGradientVal(x,y,Direction.EAST);
+      if(foodValEast > bestValSoFar)
+      {
+        bestValSoFar = foodValEast;
+        bestDirection = Direction.EAST;
+      }
     }
+
+    if(heading == Direction.WEST || heading == Direction.NORTHWEST || heading == Direction.NORTHEAST)
+    {
+      int foodValWest = getFoodGradientVal(x,y,Direction.WEST);
+      if(foodValWest > bestValSoFar)
+      {
+        bestValSoFar = foodValWest;
+        bestDirection = Direction.WEST;
+      }
+    }
+
     System.err.println("Ant: " + antData.toString() + " : bestValSoFar = " + bestValSoFar);
     if(bestValSoFar == 0) //If no direction is good, get a general heading and go in that direction
     {
       System.err.println("DEAD RECKONING...");
-      bestDirection = xyCoordinateToDirection(foodObjective.getObjectiveX(),foodObjective.getObjectiveY(),x,y);
+      //bestDirection = xyCoordinateToDirection(foodObjective.getObjectiveX(),foodObjective.getObjectiveY(),x,y);
       //System.exit(3);
     }
+    //lastFoodGradientVal = bestValSoFar;
     return bestDirection;
   }
 
