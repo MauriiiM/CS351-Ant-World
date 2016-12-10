@@ -10,7 +10,7 @@ import antworld.common.*;
 public class Client
 {
   private static final boolean DEBUG = true;
-  private final String mapFilePath = "resources/AntTestWorldDiffusion.png"; //resources/AntTestWorldDiffusion.png
+  private final String mapFilePath = "resources/AntWorld.png"; //resources/AntTestWorldDiffusion.png
   private final TeamNameEnum myTeam;
   private static final long password = 962740848319L;//Each team has been assigned a random password.
   private ObjectInputStream inputStream = null;
