@@ -8,6 +8,7 @@ import java.util.HashSet;
 import java.util.Random;
 import javax.swing.Timer;
 import javax.swing.JFrame;
+
 import antworld.common.AntData;
 import antworld.common.CommData;
 import antworld.common.Constants;
@@ -65,12 +66,12 @@ public class AntWorld implements ActionListener
 
     //********************* Note On map replacement  **************************
     //The map must have at least a one pixel a boarder of water: LandType.WATER.getColor.
-    BufferedImage map = Util.loadImage("AntWorldWaterPath.png", window);
+    BufferedImage map = Util.loadImage("AntWorld.png", window);
     worldWidth = map.getWidth();
     worldHeight = map.getHeight();
 
 
-    worldWidthInBlocks  = (int) Math.ceil((double) worldWidth / BLOCK_SIZE);
+    worldWidthInBlocks = (int) Math.ceil((double) worldWidth / BLOCK_SIZE);
     worldHeightInBlocks = (int) Math.ceil((double) worldHeight / BLOCK_SIZE);
 
     readAntWorld(map);
@@ -132,15 +133,34 @@ public class AntWorld implements ActionListener
     gameTimer.start();
   }
 
-  public int getWorldWidthInBlocks() {return worldWidthInBlocks;}
-  public int getWorldHeightInBlocks() {return worldHeightInBlocks;}
-  public HashSet<FoodData>[][] getFoodBlocks() {return foodBlocks;}
-  public ArrayList<FoodSpawnSite> getFoodSpawnList() {return foodSpawnList;}
-  public ArrayList<Nest> getNestList() {return nestList;}
+  public int getWorldWidthInBlocks()
+  {
+    return worldWidthInBlocks;
+  }
+
+  public int getWorldHeightInBlocks()
+  {
+    return worldHeightInBlocks;
+  }
+
+  public HashSet<FoodData>[][] getFoodBlocks()
+  {
+    return foodBlocks;
+  }
+
+  public ArrayList<FoodSpawnSite> getFoodSpawnList()
+  {
+    return foodSpawnList;
+  }
+
+  public ArrayList<Nest> getNestList()
+  {
+    return nestList;
+  }
 
   private void createHashMapsOfGameObjects()
   {
-    antBlocks  = new HashSet[worldWidthInBlocks][worldHeightInBlocks];
+    antBlocks = new HashSet[worldWidthInBlocks][worldHeightInBlocks];
     foodBlocks = new HashSet[worldWidthInBlocks][worldHeightInBlocks];
     for (int i = 0; i < worldWidthInBlocks; ++i)
     {
@@ -186,6 +206,7 @@ public class AntWorld implements ActionListener
   {
     return nestList.get(name.ordinal());
   }
+
   public Nest getNest(TeamNameEnum name)
   {
     for (Nest nest : nestList)
@@ -210,16 +231,17 @@ public class AntWorld implements ActionListener
   /**
    * Uses the given map image to create the world including world size, nest
    * locations and all terrain.
-   * @param map Must have the following properties:
-   * <ol>
-   *     <li>The map must have at least a one pixel a boarder of water:
-   *              LandType.WATER.getColor</li>
    *
-   *     <li>The map must have at least one pixel of 0x0 to define the nest.</li>
-   *     <li>Each nest (pixel with 0x0 color) must be at least 2xNEST_RADIUS distant from each other nest.</li>
-   *     <li>Map images must be resized using nearest neighbor NOT any type of interpolation or
+   * @param map Must have the following properties:
+   *            <ol>
+   *            <li>The map must have at least a one pixel a boarder of water:
+   *            LandType.WATER.getColor</li>
+   *            <p>
+   *            <li>The map must have at least one pixel of 0x0 to define the nest.</li>
+   *            <li>Each nest (pixel with 0x0 color) must be at least 2xNEST_RADIUS distant from each other nest.</li>
+   *            <li>Map images must be resized using nearest neighbor NOT any type of interpolation or
    *            averaging which will create shades that are undefined.</li>
-   *     <li>Map images must be saved in a lossless format (i.e. png).</li>
+   *            <li>Map images must be saved in a lossless format (i.e. png).</li>
    *            </ol>
    */
   private void readAntWorld(BufferedImage map)
@@ -306,7 +328,9 @@ public class AntWorld implements ActionListener
   public void addAnt(AntData ant)
   {
     if (ant.underground)
-    { return; }
+    {
+      return;
+    }
     int x = ant.gridX;
     int y = ant.gridY;
 
@@ -330,7 +354,9 @@ public class AntWorld implements ActionListener
   public void removeAnt(AntData ant)
   {
     if (ant == null)
-    { return; }
+    {
+      return;
+    }
     int x = ant.gridX;
     int y = ant.gridY;
 
@@ -342,7 +368,9 @@ public class AntWorld implements ActionListener
   public void removeFood(FoodData food)
   {
     if (food == null)
-    { return; }
+    {
+      return;
+    }
     int x = food.gridX;
     int y = food.gridY;
 
@@ -354,12 +382,18 @@ public class AntWorld implements ActionListener
   public void removeGameObj(GameObject obj)
   {
     if (obj == null)
-    { return; }
+    {
+      return;
+    }
     if (obj.type == GameObjectType.ANT)
-    { removeAnt(obj.ant); }
+    {
+      removeAnt(obj.ant);
+    }
 
     else
-    { removeFood(obj.food); }
+    {
+      removeFood(obj.food);
+    }
   }
 
   public void moveAnt(AntData ant, Cell from, Cell to)
@@ -401,10 +435,14 @@ public class AntWorld implements ActionListener
         for (AntData ant : antBlocks[i][j])
         {
           if (ant.nestName == nestExclude)
-          { continue; }
+          {
+            continue;
+          }
           if (Util.manhattanDistance((int) x, (int) y, ant.gridX,
               ant.gridY) <= radius)
-          { antSet.add(ant); }
+          {
+            antSet.add(ant);
+          }
         }
       }
     }
@@ -474,7 +512,9 @@ public class AntWorld implements ActionListener
 
     // System.out.println("AntWorld:: Timer " + gameTick);
     for (Nest myNest : nestList)
-    { myNest.updateRemoveDeadAntsFromAntList(); }
+    {
+      myNest.updateRemoveDeadAntsFromAntList();
+    }
 
     for (Nest myNest : nestList)
     {
@@ -494,12 +534,16 @@ public class AntWorld implements ActionListener
       }
 
       if (myNest.getNetworkStatus() == NetworkStatus.UNDERGROUND)
-      { continue; }
+      {
+        continue;
+      }
 
       ServerToClientConnection client = server.getClient(myNest.nestName);
 
       if (client == null)
-      { continue; }
+      {
+        continue;
+      }
 
       if (myNest.getNetworkStatus() != NetworkStatus.CONNECTED)
       {
@@ -515,16 +559,22 @@ public class AntWorld implements ActionListener
     }
 
     for (Nest myNest : nestList)
-    { myNest.updateRemoveDeadAntsFromWorld(this); }
+    {
+      myNest.updateRemoveDeadAntsFromWorld(this);
+    }
 
     for (Nest myNest : nestList)
     {
       if (myNest.team == TeamNameEnum.NEARLY_BRAINLESS_BOTS)
-      { continue; }
+      {
+        continue;
+      }
 
       ServerToClientConnection client = server.getClient(myNest.nestName);
       if (client == null)
-      { continue; }
+      {
+        continue;
+      }
 
       synchronized (client)
       {
@@ -551,19 +601,19 @@ public class AntWorld implements ActionListener
   private void createFoodSpawnSite()
   {
     int totalSitesToSpawn = 3 + random.nextInt(3);
-    int xRange = worldWidth/totalSitesToSpawn;
+    int xRange = worldWidth / totalSitesToSpawn;
     while (totalSitesToSpawn > 0)
     {
       int spawnX = random.nextInt(xRange);
-      spawnX = spawnX + (totalSitesToSpawn-1)*xRange;
+      spawnX = spawnX + (totalSitesToSpawn - 1) * xRange;
       int spawnY = random.nextInt(worldHeight);
 
       if (world[spawnX][spawnY].getLandType() == LandType.GRASS)
       {
         FoodType foodType;
-        if (foodSpawnList.size() == 0) foodType=FoodType.MEAT;
-        else if (foodSpawnList.size() == 1) foodType=FoodType.SEEDS;
-        else if (foodSpawnList.size() == 2) foodType=FoodType.NECTAR;
+        if (foodSpawnList.size() == 0) foodType = FoodType.MEAT;
+        else if (foodSpawnList.size() == 1) foodType = FoodType.SEEDS;
+        else if (foodSpawnList.size() == 2) foodType = FoodType.NECTAR;
         else foodType = FoodType.getRandomFood();
         foodSpawnList.add(new FoodSpawnSite(foodType, spawnX, spawnY, nestList.size()));
         //System.out.println("FoodSpawnSite: [ " + spawnX + ", " + spawnY + "] " + foodType);

@@ -39,15 +39,19 @@ public class FindClosestWater
     int green, blue;
     Color currentPixel;
 
+    if (!DEBUG) System.out.println("public static final int[][] allWaterPaths = new int[][]{");
     for (int i = 0; i < nestXY.length; i++)
     {
 //      System.out.printf("%s(%d,%d), nearest water(%d,%d)\n",
 //          NestNameEnum.values()[i], nestXY[i].x, nestXY[i].y, waterXY[i].x, waterXY[i].y);
-      if (!DEBUG) System.out.printf("static final int[] %s = new int[]{", NestNameEnum.values()[i]);
+      if (!DEBUG)
+      {
+        System.out.printf("new int[]{%d, %d, %d, %d},\n", nestXY[i].x, nestXY[i].y, waterXY[i].x, waterXY[i].y);
+      }
 
       pathfinder = new PathFinder(geomap, mapImage.getWidth(), mapImage.getHeight(), nestXY[i].x, nestXY[i].y);
       path = pathfinder.findPath(waterXY[i].x, waterXY[i].y, nestXY[i].x, nestXY[i].y);
-      for (int j = 0; j < path.getPath().size(); j++)
+      for (int j = 0; j < path.getPath().size() - 1; j++)
       {
         if (!DEBUG)
         {
@@ -66,8 +70,8 @@ public class FindClosestWater
           mapImage.setRGB(path.getPath().get(j).getX(), path.getPath().get(j).getY(), rgb.getRGB());
         }
       }
-      if (!DEBUG) System.out.print("};\n");
     }
+    if (!DEBUG) System.out.printf("};\n");
 
     try
     {
@@ -93,8 +97,7 @@ public class FindClosestWater
           nestXY[nestNum] = new Point();
           nestXY[nestNum].setLocation(x, y);
 //          System.out.println("nest at(" + x + ", " + y + ")");
-//          waterXY[nestNum] = findNearestWater(nestXY[nestNum]);
-          nearestNestXY[nestNum] = findNearestNest(nestXY[nestNum]);
+          waterXY[nestNum] = findNearestWater(nestXY[nestNum]);
           nestNum++;
         }
       }

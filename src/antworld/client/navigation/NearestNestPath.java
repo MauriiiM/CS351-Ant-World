@@ -8,4 +8,5 @@ package antworld.client.navigation;
  */
 public class NearestNestPath
 {
+
 }

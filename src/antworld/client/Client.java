@@ -20,7 +20,6 @@ public class Client
   private Socket clientSocket;
   private NestManager nestManager;
 
-
   private Client(String host, int portNumber, TeamNameEnum team)
   {
     nestManager = new NestManager(this, mapFilePath);
@@ -153,6 +152,7 @@ public class Client
       try
       {
         if (DEBUG) System.out.println("Client: chooseActions: " + myNestName);
+
         nestManager.chooseActionsOfAllAnts(data);   //Send the commData to the nest manager to work with
         CommData sendData = data.packageForSendToServer();  //Send the commData back to the server once the nest manager is done
 

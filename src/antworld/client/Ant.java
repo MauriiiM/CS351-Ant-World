@@ -1,6 +1,7 @@
 package antworld.client;
 
 import antworld.client.navigation.MapManager;
+import antworld.client.navigation.NearestWaterPaths;
 import antworld.client.navigation.Path;
 import antworld.client.navigation.PathFinder;
 import antworld.common.*;
@@ -16,8 +17,10 @@ public class Ant
   static PathFinder pathFinder;
   static MapManager mapManager;
   static int centerX, centerY;
-  static int waterCarryCap = 0;
-  static int necessaryWater;
+  private static int waterCarryCap = 0;
+  private static int necessaryWater = 200;
+  private static Path waterPath;
+
   Direction lastDir;
   private AntData antData;
   public final int antID;
@@ -25,12 +28,14 @@ public class Ant
   boolean followFoodGradient = false;
   Path path;
   int pathStepCount;
+  int h2oPathStepCount; //same as above but waterPath is backwards so this starts at waterpath.size
   private boolean randomWalk = false;
   boolean completedLastAction = false;
   private boolean checkAttritionDamage = false;
   private int randomSteps = 0;
   private Goal currentGoal = Goal.EXPLORE;
   FoodObjective foodObjective = null;
+
 
   Ant(AntData ant)
   {
@@ -91,7 +96,7 @@ public class Ant
   }
 
   //Ants always exit nest at a random edge of the nest
-  boolean exitNest(AntData ant, AntAction action)
+  boolean exitNest(AntData ant, AntAction action, CommData data)
   {
     if (ant.underground)
     {
@@ -105,14 +110,33 @@ public class Ant
         return healSelf(action);
       }
 
-      //if (nestWater < necessaryWater && waterCarryCap < necessaryWater)
-//      {
-//        if(!hasPath)
-//        {
-//          waterCarryCap += ant.carryUnits;
-//          hasPath = true;
-//        }
-//      }
+      if (data.foodStockPile[0] < (necessaryWater = data.myAntList.size() /* *2*/) && waterCarryCap < necessaryWater)
+      {
+        if (!hasPath)
+        {
+          if (waterPath == null) //this will set the local water path
+          {
+            for (int i = 0; i < NearestWaterPaths.allWaterPaths.length; i++)
+            {
+              if (NearestWaterPaths.allWaterPaths[i][0] == centerX && NearestWaterPaths.allWaterPaths[i][1] == centerY)
+              {
+                waterPath = pathFinder.findPath(NearestWaterPaths.allWaterPaths[i][2], NearestWaterPaths.allWaterPaths[i][3], centerX, centerY);
+                h2oPathStepCount = waterPath.getPath().size() - 1;
+              }
+            }
+          }
+          path = waterPath;
+          waterCarryCap += ant.antType.getCarryCapacity();
+          System.err.println(waterCarryCap);
+          hasPath = true;
+//          currentGoal = Goal.COLLECTWATER;
+          action.type = AntAction.AntActionType.EXIT_NEST;
+          action.x = path.getPath().get(h2oPathStepCount).getX();
+          action.y = path.getPath().get(h2oPathStepCount).getY();
+          h2oPathStepCount--;
+          return true;
+        }
+      }
 
       int exitX = centerX - (Constants.NEST_RADIUS - 1) + random.nextInt(2 * (Constants.NEST_RADIUS - 1));
       int deltaX = Math.abs(centerX - exitX);
@@ -135,9 +159,25 @@ public class Ant
     return false;
   }
 
-  /**
-   * @todo currently going all the way to center of nest, what's the math to go just to the nest?
-   */
+  private void findPathToNest(AntAction action)
+  {
+    Path pathToNest = foodObjective.getPathToNest();
+    int distanceToPathStartX = Math.abs(antData.gridX - pathToNest.getPathStart().getX());
+    int distanceToPathStartY = Math.abs(antData.gridY - pathToNest.getPathStart().getY());
+
+    if (distanceToPathStartX <= 1 && distanceToPathStartY <= 1)  //Ant is adjacent to path, start to follow it
+    {
+      setPath(pathToNest);
+      foodObjective.unallocateAnt(this);  //Unallocate ant
+      foodObjective = null; //Reset food objective
+    }
+    else    //Follow path diffusion gradient
+    {
+      action.type = AntAction.AntActionType.MOVE;
+      action.direction = getBestDirectionToPath(antData.gridX, antData.gridY);
+    }
+  }
+
   boolean goToNest(AntData ant, AntAction action)
   {
     if (currentGoal == Goal.RETURNTONEST)
@@ -178,23 +218,33 @@ public class Ant
     return false;
   }
 
-  private void findPathToNest(AntAction action)
+  boolean isFollowingPath(AntData ant, AntAction action)
   {
-    Path pathToNest = foodObjective.getPathToNest();
-    int distanceToPathStartX = Math.abs(antData.gridX - pathToNest.getPathStart().getX());
-    int distanceToPathStartY = Math.abs(antData.gridY - pathToNest.getPathStart().getY());
-
-    if (distanceToPathStartX <= 1 && distanceToPathStartY <= 1)  //Ant is adjacent to path, start to follow it
-    {
-      setPath(pathToNest);
-      foodObjective.unallocateAnt(this);  //Unallocate ant
-      foodObjective = null; //Reset food objective
-    }
-    else    //Follow path diffusion gradient
+    if (hasPath)
     {
       action.type = AntAction.AntActionType.MOVE;
-      action.direction = getBestDirectionToPath(antData.gridX, antData.gridY);
+      if (path == waterPath && ant.carryUnits == 0)//going for water
+      {
+        action.direction = xyCoordinateToDirection(path.getPath().get(h2oPathStepCount).getX(), path.getPath().get(h2oPathStepCount).getY(), ant.gridX, ant.gridY);
+        System.err.println("ant @(" + antData.gridX + ", " + ant.gridY + ")" + "\npath @(" + path.getPath().get(h2oPathStepCount).getX() + ", " + path.getPath().get(h2oPathStepCount).getY() + ")");
+        if (h2oPathStepCount == 0)
+        {
+          System.err.println("PICKUP WATER");
+          action.type = AntAction.AntActionType.PICKUP;
+          action.quantity = ant.antType.getCarryCapacity() - 1;
+          return true;
+        }
+        h2oPathStepCount--;
+      }
+      else if (ant.carryUnits > 0 || path != waterPath)
+      {
+        currentGoal = Goal.RETURNTONEST;
+        goToNest(ant, action);
+      }
+//      action.quantity = ant.antType.getCarryCapacity() - 1;
+      return true;
     }
+    return false;
   }
 
   private void pickUpFood(AntAction action)
