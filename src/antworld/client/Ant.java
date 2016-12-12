@@ -211,7 +211,6 @@ public class Ant
     return false;
   }
 
-  //@todo ants will not always get to their location if their path is blocked and they didnt move to the location
   boolean isFollowingPath(AntData ant, AntAction action)
   {
     if (hasPath)
@@ -228,7 +227,9 @@ public class Ant
           action.quantity = ant.antType.getCarryCapacity() - 1;
           return true;
         }
-        h2oPathStepCount--;
+        //safe check to see if ant actually moved and is where he's supposed to be on path
+        if (antData.gridX == path.getPath().get(h2oPathStepCount).getX() && antData.gridY == path.getPath().get(h2oPathStepCount).getY())
+          h2oPathStepCount--;
       }
       else if (ant.carryUnits > 0 || path != waterPath)
       {
