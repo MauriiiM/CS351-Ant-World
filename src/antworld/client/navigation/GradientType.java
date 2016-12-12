@@ -22,6 +22,9 @@ public enum GradientType
     {
       return 1;
     }
+  },
+  ENEMY{
+    public int polarity() { return 1; }
   };
 
   public abstract int polarity();

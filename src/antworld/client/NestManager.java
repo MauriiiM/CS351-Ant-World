@@ -27,8 +27,9 @@ public class NestManager
   private MapManager mapManager;
   public static PathFinder pathFinder;
   private FoodManager foodManager;
-  //private EnemyManager enemyManager;
+  private EnemyManager enemyManager;
   private HashMap<Integer, Ant> antMap;  //Must use ID as the key because antData is constantly changing
+  private HashMap<Integer, AntGroup> groupMap;
   private Ant ant;
   private Cell[][] geoMap;
 
@@ -41,12 +42,15 @@ public class NestManager
     geoMap = mapManager.getGeoMap();
     pathFinder = new PathFinder(geoMap, mapManager.getMapWidth(), mapManager.getMapHeight(), NESTX, NESTY);
     antMap = new HashMap<>();
-    foodManager = new FoodManager(antMap, pathFinder);
+    groupMap = new HashMap<>();
+    foodManager = new FoodManager(groupMap,pathFinder);
     foodManager.start();
-    //enemyManager = new EnemyManager(antMap,pathFinder);
-    //enemyManager.start();
+    enemyManager = new EnemyManager(antMap,pathFinder);
+    enemyManager.start();
     Ant.mapManager = mapManager;
     Ant.pathFinder = pathFinder;
+    AntGroup.mapManager = mapManager;
+    AntGroup.pathFinder = pathFinder;
   }
 
   /**
@@ -86,14 +90,36 @@ public class NestManager
 
   /**
    * Used by client to initialize the antMap before the main game loop
-   *
+   * Also initializes the group map by assigning ants to a group when they are created
    * @param commData
    */
   public void initializeAntMap(CommData commData)
   {
     for (AntData ant : commData.myAntList)
     {
-      antMap.put(ant.id, new Ant(ant));
+      Ant newAnt = new Ant(ant);
+      antMap.put(ant.id, newAnt);
+
+      Integer groupCount = groupMap.size();
+      System.err.println("Initializing antMap: groupCount = " + groupCount);
+      if(groupCount==0) //If a group has not been initialized yet
+      {
+        AntGroup newGroup = new AntGroup(groupCount,newAnt);  //Create the first group
+        groupMap.put(groupCount,newGroup);    //Add it to the group map
+      }
+      else
+      {
+        AntGroup lastGroup = groupMap.get(groupCount-1);  //Get the most recently made group
+        if(!lastGroup.isFull())   //If it's not full, assign the next ant to it
+        {
+          lastGroup.addAntToGroup(newAnt);
+        }
+        else  //Otherwise, create a new group and assign the new ant as the leader
+        {
+          AntGroup newGroup = new AntGroup(groupCount,newAnt);
+          groupMap.put(groupCount,newGroup);
+        }
+      }
     }
   }
 
@@ -115,15 +141,23 @@ public class NestManager
       foodManager.setFoodSet(foodArray);
     }
 
-    /*
     HashSet<AntData> enemySet = commData.enemyAntSet;
     if(enemySet.size() > 0)  //If the foodSet is greater than 0, send a copy to the food manager
     {
       AntData[] enemyArray = enemySet.toArray(new AntData[enemySet.size()]); //Create a FoodData array for the food manager to read. This keeps the foodset thread safe.
-      enemyManager.setEnemySet(enemyArray);
+      //enemyManager.setEnemySet(enemyArray);
     }
-    */
 
+    AntGroup nextGroup;
+    for(Integer id : groupMap.keySet())
+    {
+      nextGroup = groupMap.get(id);
+      mapManager.updateCellExploration(nextGroup.getGroupLeader().getAntData().gridX,nextGroup.getGroupLeader().getAntData().gridY);
+      //todo check attrition damage
+      nextGroup.chooseGroupActions();
+    }
+
+    /*
     Ant nextAnt;
     AntData nextAntData;
     for (Integer id : antMap.keySet())
@@ -137,9 +171,26 @@ public class NestManager
         nextAnt.setCheckAttritionDamage(true);
       }
 
+      Goal currentGoal = antMap.get(id).getCurrentGoal();
+      if(currentGoal == Goal.EXPLORE)
+      {
+        System.err.println("Ant: " + nextAntData.toString() + " : GOAL= EXPLORE");
+      }
+      else if(currentGoal == Goal.GOTOFOODSITE)
+      {
+        System.err.println("Ant: " + nextAntData.toString() + " : GOAL= GOTOFOODSITE");
+      }
+      else if(currentGoal == Goal.RETURNTONEST)
+      {
+        System.err.println("Ant: " + nextAntData.toString() + " : GOAL= RETURNTONEST");
+      }
+
       AntAction action = chooseAction(commData, nextAntData);
       nextAntData.myAction = action;
     }
+    */
+
+    System.err.println("GAME TICK = " + commData.gameTick);
 
     //Used for testing food gradient write/erase
     /*
@@ -151,6 +202,7 @@ public class NestManager
     */
   }
 
+  /*
   private AntAction chooseAction(CommData data, AntData ant)
   {
     AntAction action = new AntAction(AntAction.AntActionType.STASIS);
@@ -167,7 +219,7 @@ public class NestManager
 
     if (this.ant.exitNest(ant, action, data)) return action;
 
-    if (this.ant.attackEnemyAnt(ant, action)) return action;
+    //if (this.ant.attackEnemyAnt(ant, action)) return action;
 
     if (this.ant.isFollowingPath(ant, action)) return action;
 
@@ -183,4 +235,5 @@ public class NestManager
     this.ant.getAntData().myAction = action;
     return action;
   }
+  */
 }

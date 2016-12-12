@@ -10,37 +10,36 @@ import java.util.ArrayList;
  * Used by FoodManager to efficiently allocate ants to a food site
  * Created by John on 12/1/2016.
  */
-public class FoodObjective
+public class FoodObjective extends Objective
 {
   private FoodData foodSite;    //Could this give a null pointer exception once all the food has been collected?
-  private ArrayList<Ant> allocatedAnts;
-  private int objectiveX = 0;
-  private int objectiveY = 0;
+  private ArrayList<AntGroup> allocatedGroups;
   private volatile int foodLeft;
   private Path pathToNest = null;
 
   public FoodObjective(FoodData foodSite, Path pathToNest)
   {
     this.foodSite = foodSite;
-    objectiveX = foodSite.gridX;
-    objectiveY = foodSite.gridY;
+    this.objectiveX = foodSite.gridX;
+    this.objectiveY = foodSite.gridY;
     foodLeft = foodSite.getCount();
-    allocatedAnts = new ArrayList<>();
+    allocatedGroups = new ArrayList<>();
     this.pathToNest = pathToNest;
   }
 
-  public void allocateAnt(Ant ant)
+  public void allocateGroup(AntGroup group)
   {
-    allocatedAnts.add(ant);
-    ant.setFoodObjective(this);
+    allocatedGroups.add(group);
+    group.setGroupObjective(this);
   }
 
   public void reduceFoodLeft(int amount)
   {
     foodLeft = foodLeft - amount;
-    if(foodLeft < 0)
+    if(foodLeft <= 0 && !completed)
     {
       foodLeft = 0;
+      completed = true;
     }
   }
 
@@ -49,9 +48,9 @@ public class FoodObjective
     return foodLeft;
   }
 
-  public void unallocateAnt(Ant ant)
+  public void unallocateGroup(AntGroup group)
   {
-    allocatedAnts.remove(ant);
+    allocatedGroups.remove(group);
   }
 
   public FoodData getFoodData()
@@ -64,19 +63,9 @@ public class FoodObjective
     this.foodSite = newData;
   }
 
-  public ArrayList<Ant> getAllocatedAnts()
+  public ArrayList<AntGroup> getAllocatedAnts()
   {
-    return allocatedAnts;
-  }
-
-  public int getObjectiveX()
-  {
-    return objectiveX;
-  }
-
-  public int getObjectiveY()
-  {
-    return objectiveY;
+    return allocatedGroups;
   }
 
   public Path getPathToNest()

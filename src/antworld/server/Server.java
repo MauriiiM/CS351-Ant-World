@@ -266,7 +266,7 @@ public class Server extends Thread
 
      data.password = source.password;
      data.errorMsg = source.errorMsg;
-     
+
 
      data.myAntList = new ArrayList<AntData>();
      for (AntData ant : source.myAntList)

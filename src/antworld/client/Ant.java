@@ -24,7 +24,11 @@ public class Ant
 
   Direction lastDir;
   private AntData antData;
+  private AntAction lastAction;
+  private AntAction nextAction;
   public final int antID;
+  public boolean hasGroup = false;
+  private AntGroup antGroup = null;
   boolean hasPath = false;
   boolean followFoodGradient = false;
   Path path;
@@ -35,7 +39,8 @@ public class Ant
   private boolean checkAttritionDamage = false;
   private int randomSteps = 0;
   private Goal currentGoal = Goal.EXPLORE;
-  FoodObjective foodObjective = null;
+  //FoodObjective foodObjective = null;
+  Objective currentObjective = null;
 
 
   Ant(AntData ant)
@@ -46,24 +51,26 @@ public class Ant
 
   public void setAntData(AntData newData)
   {
-    this.antData = newData;
-
-    //Verify antData from server matches old antData indicating that the last action was completed.
-    if (newData.myAction.type == this.antData.myAction.type)
-    {
-      this.antData = newData;
-      completedLastAction = true;
+    if(this.antGroup != null && !this.antGroup.followOrdered) {
+      //Verify antData from server matches old antData indicating that the last action was completed.
+      if (newData.myAction.type == this.antData.myAction.type) {
+        //System.err.println("Ant: " + antData.toString() + "antData action= " + antData.myAction.type + " newData = " + newData.myAction.type);
+        //System.err.println("\tDID NOT MISS A STEP!!!");
+        this.antData = newData;
+        completedLastAction = true;
+      } else {
+        //System.err.println("Ant: " + antData.toString() + "antData action= " + antData.myAction.type + " newData = " + newData.myAction.type);
+        //System.err.println("\tMISSED A STEP!!!");
+        //System.exit(3);
+        newData.myAction = this.antData.myAction;
+        this.antData = newData;
+        completedLastAction = false;
+      }
     }
     else
     {
-      System.err.println("Ant: " + antData.toString() + "antData action= " + antData.myAction.type + " newData = " + newData.myAction.type);
-      System.err.println("\tMISSED A STEP!!!");
-      //System.exit(3);
-      newData.myAction = this.antData.myAction;
       this.antData = newData;
-      completedLastAction = false;
     }
-
   }
 
   public AntData getAntData()
@@ -71,14 +78,48 @@ public class Ant
     return this.antData;
   }
 
+  public void setAntGroup(AntGroup group)
+  {
+    this.antGroup = group;
+  }
+
+  public void setNextAction(AntAction nextAction)
+  {
+    this.nextAction = nextAction;
+  }
+
+  public AntAction getNextAction()
+  {
+    return this.nextAction;
+  }
+
+  public void setLastAction(AntAction lastAction)
+  {
+    this.lastAction = lastAction;
+  }
+
+  public AntAction getLastAction()
+  {
+    return this.lastAction;
+  }
+
+  public AntGroup getAntGroup()
+  {
+    return this.antGroup;
+  }
+
+  /*  AntGroup will check damage of all group members
   public void setCheckAttritionDamage(boolean state)
   {
     checkAttritionDamage = state;
   }
+  */
+
 
   //only called when ant's in the nest and will be true
   boolean dropFood(AntData ant, AntAction action)
   {
+    System.err.println("ant: " + antData.toString() + " Dropping food!");
     action.type = AntAction.AntActionType.DROP;
     action.quantity = ant.carryUnits;
     return true;
@@ -96,6 +137,7 @@ public class Ant
     return AntAction.AntActionType.ENTER_NEST;
   }
 
+/*
   //Ants always exit nest at a random edge of the nest
   boolean exitNest(AntData ant, AntAction action, CommData data)
   {
@@ -151,9 +193,15 @@ public class Ant
     }
     return false;
   }
+  */
+
+  /**
+   * @todo currently going all the way to center of nest, what's the math to go just to the nest?
+   */
 
   private void findPathToNest(AntAction action)
   {
+    FoodObjective foodObjective = (FoodObjective) currentObjective;
     Path pathToNest = foodObjective.getPathToNest();
     int distanceToPathStartX = Math.abs(antData.gridX - pathToNest.getPathStart().getX());
     int distanceToPathStartY = Math.abs(antData.gridY - pathToNest.getPathStart().getY());
@@ -161,7 +209,7 @@ public class Ant
     if (distanceToPathStartX <= 1 && distanceToPathStartY <= 1)  //Ant is adjacent to path, start to follow it
     {
       setPath(pathToNest);
-      foodObjective.unallocateAnt(this);  //Unallocate ant
+      //foodObjective.unallocateAnt(this);  //Unallocate ant
       foodObjective = null; //Reset food objective
     }
     else    //Follow path diffusion gradient
@@ -183,37 +231,81 @@ public class Ant
         {
           action.type = enterNest();
           endPath();
-          currentGoal = Goal.EXPLORE;
+          //currentGoal = Goal.EXPLORE;
           return true;
         }
+        int nextStepX = path.getPath().get(pathStepCount).getX();
+        int nextStepY = path.getPath().get(pathStepCount).getY();
 
+        if(ant.gridX == nextStepX && ant.gridY == nextStepY)  //Ant is already standing on the next step
+        {
+          pathStepCount++;
+          nextStepX = path.getPath().get(pathStepCount).getX();
+          nextStepY = path.getPath().get(pathStepCount).getY();
+        }
+        action.direction = xyCoordinateToDirection(nextStepX, nextStepY, ant.gridX, ant.gridY);
         action.type = AntAction.AntActionType.MOVE;
-        action.direction = xyCoordinateToDirection(path.getPath().get(pathStepCount).getX(), path.getPath().get(pathStepCount).getY(), ant.gridX, ant.gridY);
+
+        //System.err.println("Ant : " + ant.id + " step Count = " + pathStepCount);
+        //System.err.println("\t next step: (" + nextStepX + "," + nextStepY + ")");
+        //System.err.println("\t ant: " + ant.toString());
         pathStepCount++;
       }
       else if (hasPath && pathStepCount == path.getPath().size() - 1)
       {
         action.type = enterNest();
         endPath();
-        currentGoal = Goal.EXPLORE;
       }
-      else if (!hasPath && antData.carryUnits > 0)  //If the ant doesn't have a path yet, but is carrying food
+      else if(!hasPath && antData.carryUnits > 0 && !ant.underground)  //If the ant doesn't have a path yet, but is carrying food
       {
-        findPathToNest(action);
+        findPathFromFoodToNest(ant,action);
       }
-      else if (!hasPath && antData.carryUnits == 0)  //If the ant doesn't have a path, but it needs to go home
+      else if(!hasPath && antData.carryUnits == 0 && !ant.underground)  //If the ant doesn't have a path, but it needs to go home
       {
-        //System.err.println("Ant: " + antData.toString() + " REQUESTING PATH HOME!");
+        System.err.println("Ant: " + antData.toString() + " REQUESTING PATH HOME!");
+        //todo got a null pointer from step comparator here once!
         NestManager.pathFinder.requestAntPath(this, antData.gridX, antData.gridY, centerX, centerY);
+      }
+      else if(ant.underground)
+      {
+        if(ant.carryUnits > 0)
+        {
+          dropFood(ant, action);
+        }
+        else if(ant.health < 20)
+        {
+          healSelf(action);
+        }
+        else
+        {
+          currentGoal = Goal.EXPLORE;
+        }
       }
       return true;
     }
     return false;
   }
 
-  boolean isFollowingPath(AntData ant, AntAction action)
+  boolean findPathFromFoodToNest(AntData ant, AntAction action)
   {
-    if (hasPath)
+    FoodObjective foodObjective = null;
+    if(currentObjective instanceof FoodObjective)
+    {
+      foodObjective = (FoodObjective) currentObjective;
+    }
+    else
+    {
+      System.exit(3); //Something has gone wrong.
+    }
+    Path pathToNest = foodObjective.getPathToNest();
+    int distanceToPathStartX = Math.abs(antData.gridX - pathToNest.getPathStart().getX());
+    int distanceToPathStartY = Math.abs(antData.gridY - pathToNest.getPathStart().getY());
+
+    if (distanceToPathStartX <= 1 && distanceToPathStartY <= 1)  //Ant is adjacent to path, start to follow it
+    {
+      setPath(pathToNest);
+    }
+    else    //Follow path diffusion gradient
     {
       action.type = AntAction.AntActionType.MOVE;
       if (path == waterPath && ant.carryUnits == 0)//going for water
@@ -234,7 +326,7 @@ public class Ant
       else if (ant.carryUnits > 0 || path != waterPath)
       {
         currentGoal = Goal.RETURNTONEST;
-        goToNest(ant, action);
+        //goToNest(ant, action);    //CAUSES STACK OVERFLOW
       }
 //      action.quantity = ant.antType.getCarryCapacity() - 1;
       return true;
@@ -244,8 +336,17 @@ public class Ant
 
   private void pickUpFood(AntAction action)
   {
-    int foodX = foodObjective.getObjectiveX();
-    int foodY = foodObjective.getObjectiveY();
+    FoodObjective foodObjective = (FoodObjective) currentObjective;
+    int foodLeft = foodObjective.getFoodLeft();
+
+    if(antData.carryUnits > 0 || foodLeft <= 0)
+    {
+      setCurrentGoal(Goal.RETURNTONEST);
+      return;
+    }
+
+    int foodX = currentObjective.getObjectiveX();
+    int foodY = currentObjective.getObjectiveY();
     int antX = antData.gridX;
     int antY = antData.gridY;
     Direction foodDirection = xyCoordinateToDirection(foodX, foodY, antX, antY);
@@ -255,31 +356,7 @@ public class Ant
     action.quantity = antData.antType.getCarryCapacity() - 1;
     foodObjective.reduceFoodLeft(antData.antType.getCarryCapacity() - 1);
     System.err.println("Ant: " + antData.toString() + " : PICKING UP FOOD : foodLeft = " + foodObjective.getFoodLeft());
-    setCurrentGoal(Goal.RETURNTONEST);
-  }
 
-  private Direction goOppositeDirection(Direction dir)
-  {
-    switch (dir)
-    {
-      case NORTH:
-        return Direction.SOUTH;
-      case SOUTH:
-        return Direction.NORTH;
-      case WEST:
-        return Direction.EAST;
-      case EAST:
-        return Direction.WEST;
-      case NORTHWEST:
-        return Direction.SOUTHEAST;
-      case NORTHEAST:
-        return Direction.SOUTHWEST;
-      case SOUTHWEST:
-        return Direction.NORTHEAST;
-      case SOUTHEAST:
-        return Direction.NORTHWEST;
-    }
-    return dir;
   }
 
   private Direction xyCoordinateToDirection(int nextX, int nextY, int antX, int antY)
@@ -296,6 +373,7 @@ public class Ant
     return null;
   }
 
+  /*
   //Samples two points in the given direction and returns the average exploration value
   //Maybe the average should also consider the cells directly around the ant instead of just around the radius of sight.
   private int getAverageExploreVal(int x, int y, Direction direction)
@@ -305,44 +383,44 @@ public class Ant
     switch (direction)
     {
       case NORTH:
-        explorationValue += mapManager.getExplorationVal(x, y - 29);
-        explorationValue += mapManager.getExplorationVal(x, y - 1);
-        explorationValue += mapManager.getExplorationVal(x, y - 32);
+        explorationValue += mapManager.getExplorationVal(x,y-29);
+        explorationValue += mapManager.getExplorationVal(x,y-1);
+        explorationValue += mapManager.getExplorationVal(x,y-32);
         break;
       case NORTHEAST:
-        explorationValue += mapManager.getExplorationVal(x + 29, y - 29);
-        explorationValue += mapManager.getExplorationVal(x + 1, y - 1);
-        explorationValue += mapManager.getExplorationVal(x + 32, y - 32);
+        explorationValue += mapManager.getExplorationVal(x+29,y-29);
+        explorationValue += mapManager.getExplorationVal(x+1,y-1);
+        explorationValue += mapManager.getExplorationVal(x+32,y-32);
         break;
       case NORTHWEST:
-        explorationValue += mapManager.getExplorationVal(x - 29, y - 29);
-        explorationValue += mapManager.getExplorationVal(x - 1, y - 1);
-        explorationValue += mapManager.getExplorationVal(x - 32, y - 32);
+        explorationValue += mapManager.getExplorationVal(x-29,y-29);
+        explorationValue += mapManager.getExplorationVal(x-1,y-1);
+        explorationValue += mapManager.getExplorationVal(x-32,y-32);
         break;
       case SOUTH:
-        explorationValue += mapManager.getExplorationVal(x, y + 29);
-        explorationValue += mapManager.getExplorationVal(x, y + 1);
-        explorationValue += mapManager.getExplorationVal(x, y + 32);
+        explorationValue += mapManager.getExplorationVal(x,y+29);
+        explorationValue += mapManager.getExplorationVal(x,y+1);
+        explorationValue += mapManager.getExplorationVal(x,y+32);
         break;
       case SOUTHEAST:
-        explorationValue += mapManager.getExplorationVal(x + 29, y + 29);
-        explorationValue += mapManager.getExplorationVal(x + 1, y + 1);
-        explorationValue += mapManager.getExplorationVal(x + 32, y + 32);
+        explorationValue += mapManager.getExplorationVal(x+29,y+29);
+        explorationValue += mapManager.getExplorationVal(x+1,y+1);
+        explorationValue += mapManager.getExplorationVal(x+32,y+32);
         break;
       case SOUTHWEST:
-        explorationValue += mapManager.getExplorationVal(x - 29, y + 29);
-        explorationValue += mapManager.getExplorationVal(x - 1, y + 1);
-        explorationValue += mapManager.getExplorationVal(x - 32, y + 32);
+        explorationValue += mapManager.getExplorationVal(x-29,y+29);
+        explorationValue += mapManager.getExplorationVal(x-1,y+1);
+        explorationValue += mapManager.getExplorationVal(x-32,y+32);
         break;
       case EAST:
-        explorationValue += mapManager.getExplorationVal(x + 29, y);
-        explorationValue += mapManager.getExplorationVal(x + 1, y);
-        explorationValue += mapManager.getExplorationVal(x + 32, y);
+        explorationValue += mapManager.getExplorationVal(x+29,y);
+        explorationValue += mapManager.getExplorationVal(x+1,y);
+        explorationValue += mapManager.getExplorationVal(x+32,y);
         break;
       case WEST:
-        explorationValue += mapManager.getExplorationVal(x - 29, y);
-        explorationValue += mapManager.getExplorationVal(x - 1, y);
-        explorationValue += mapManager.getExplorationVal(x - 32, y);
+        explorationValue += mapManager.getExplorationVal(x-29,y);
+        explorationValue += mapManager.getExplorationVal(x-1,y);
+        explorationValue += mapManager.getExplorationVal(x-32,y);
         break;
     }
     return explorationValue / 3;
@@ -460,7 +538,7 @@ public class Ant
 
     return bestDirection;
   }
-
+  */
   //Returns the food gradient val of the neighboring cell in a given direction
   private int getFoodGradientVal(int x, int y, Direction direction)
   {
@@ -498,7 +576,7 @@ public class Ant
 
   private Direction getBestDirectionToFood(int x, int y)
   {
-    Direction heading = xyCoordinateToDirection(foodObjective.getObjectiveX(), foodObjective.getObjectiveY(), x, y);
+    Direction heading = xyCoordinateToDirection(currentObjective.getObjectiveX(),currentObjective.getObjectiveY(),x,y);
     int bestValSoFar = 0;
     Direction bestDirection = heading;
 
@@ -582,8 +660,8 @@ public class Ant
       }
     }
 
-    //System.err.println("Ant: " + antData.toString() + " : bestValSoFar = " + bestValSoFar);
-    if (bestValSoFar == 0) //If no direction is good, get a general heading and go in that direction
+    System.err.println("\tAnt: " + antData.toString() + " : bestValSoFar = " + bestValSoFar);
+    if(bestValSoFar == 0) //If no direction is good, get a general heading and go in that direction
     {
       //System.err.println("DEAD RECKONING...");
       //bestDirection = xyCoordinateToDirection(foodObjective.getObjectiveX(),foodObjective.getObjectiveY(),x,y);
@@ -684,6 +762,249 @@ public class Ant
     return bestDirection;
   }
 
+  private int getAverageEnemyGradientVal(int x, int y, Direction direction)
+  {
+    int enemyGradientVal = 0;
+
+    switch (direction)
+    {
+      case NORTH:
+        enemyGradientVal += mapManager.getEnemyProximityVal(x,y-1);
+        enemyGradientVal += mapManager.getEnemyProximityVal(x,y-29);
+        break;
+      case NORTHEAST:
+        enemyGradientVal += mapManager.getEnemyProximityVal(x+1,y-1);
+        enemyGradientVal += mapManager.getEnemyProximityVal(x+29,y-29);
+        break;
+      case NORTHWEST:
+        enemyGradientVal += mapManager.getEnemyProximityVal(x-1,y-1);
+        enemyGradientVal += mapManager.getEnemyProximityVal(x-29,y-29);
+        break;
+      case SOUTH:
+        enemyGradientVal += mapManager.getEnemyProximityVal(x,y+1);
+        enemyGradientVal += mapManager.getEnemyProximityVal(x,y+29);
+        break;
+      case SOUTHEAST:
+        enemyGradientVal += mapManager.getEnemyProximityVal(x+1,y+1);
+        enemyGradientVal += mapManager.getEnemyProximityVal(x+29,y+29);
+        break;
+      case SOUTHWEST:
+        enemyGradientVal += mapManager.getEnemyProximityVal(x-1,y+1);
+        enemyGradientVal += mapManager.getEnemyProximityVal(x-29,y+29);
+        break;
+      case EAST:
+        enemyGradientVal += mapManager.getEnemyProximityVal(x+1,y);
+        enemyGradientVal += mapManager.getEnemyProximityVal(x+29,y);
+        break;
+      case WEST:
+        enemyGradientVal += mapManager.getEnemyProximityVal(x-1,y);
+        enemyGradientVal += mapManager.getEnemyProximityVal(x-29,y);
+        break;
+    }
+    return enemyGradientVal/2;
+  }
+
+  private boolean verifyHeading(int x, int y, Direction heading)
+  {
+    boolean validMove = false;
+    LandType cellType;
+    boolean occupied;
+
+    switch (heading) {
+      case NORTH:
+        cellType = mapManager.getLandType(x,y-1);
+        if(cellType != null && cellType != LandType.WATER && cellType != LandType.NEST)
+        {
+          occupied = mapManager.getOccupied(x, y-1);
+          if(!occupied)
+          {
+            validMove = true;
+          }
+        }
+        break;
+      case NORTHEAST:
+        cellType = mapManager.getLandType(x+1,y-1);
+        if(cellType != null && cellType != LandType.WATER && cellType != LandType.NEST)
+        {
+          occupied = mapManager.getOccupied(x+1, y-1);
+          if(!occupied)
+          {
+            validMove = true;
+          }
+        }
+        break;
+      case NORTHWEST:
+        cellType = mapManager.getLandType(x-1,y-1);
+        if(cellType != null && cellType != LandType.WATER && cellType != LandType.NEST)
+        {
+          occupied = mapManager.getOccupied(x-1, y-1);
+          if(!occupied)
+          {
+            validMove = true;
+          }
+        }
+        break;
+      case SOUTH:
+        cellType = mapManager.getLandType(x,y+1);
+        if(cellType != null && cellType != LandType.WATER && cellType != LandType.NEST)
+        {
+          occupied = mapManager.getOccupied(x, y+1);
+          if(!occupied)
+          {
+            validMove = true;
+          }
+        }
+        break;
+      case SOUTHEAST:
+        cellType = mapManager.getLandType(x+1,y+1);
+        if(cellType != null && cellType != LandType.WATER && cellType != LandType.NEST)
+        {
+          occupied = mapManager.getOccupied(x+1, y+1);
+          if(!occupied)
+          {
+            validMove = true;
+          }
+        }
+        break;
+      case SOUTHWEST:
+        cellType = mapManager.getLandType(x-1,y+1);
+        if(cellType != null && cellType != LandType.WATER && cellType != LandType.NEST)
+        {
+          occupied = mapManager.getOccupied(x-1, y+1);
+          if(!occupied)
+          {
+            validMove = true;
+          }
+        }
+        break;
+      case EAST:
+        cellType = mapManager.getLandType(x+1,y);
+        if(cellType != null && cellType != LandType.WATER && cellType != LandType.NEST)
+        {
+          occupied = mapManager.getOccupied(x+1, y);
+          if(!occupied)
+          {
+            validMove = true;
+          }
+        }
+        break;
+      case WEST:
+        cellType = mapManager.getLandType(x-1,y);
+        if(cellType != null && cellType != LandType.WATER && cellType != LandType.NEST)
+        {
+          occupied = mapManager.getOccupied(x-1, y);
+          if(!occupied)
+          {
+            validMove = true;
+          }
+        }
+        break;
+    }
+
+    return validMove;
+  }
+
+  private Direction getBestDirectionToEnemy(int x, int y)
+  {
+    Direction heading = xyCoordinateToDirection(currentObjective.getObjectiveX(),currentObjective.getObjectiveY(),x,y);
+    int bestValSoFar;
+
+    //verify that heading is a legal move (not into water/into occupied cell)
+    if(verifyHeading(x,y,heading))
+    {
+      bestValSoFar = 0;
+    }
+    else
+    {
+      bestValSoFar = -10;
+    }
+    Direction bestDirection = heading;
+
+    if(heading == Direction.NORTH || heading == Direction.NORTHEAST || heading == Direction.NORTHWEST)
+    {
+      int enemyValNorth = getAverageEnemyGradientVal(x,y,Direction.NORTH);
+      if(enemyValNorth > bestValSoFar)
+      {
+        bestValSoFar = enemyValNorth;
+        bestDirection = Direction.NORTH;
+      }
+    }
+
+    if(heading == Direction.NORTH || heading == Direction.NORTHEAST || heading == Direction.EAST)
+    {
+      int enemyValNE = getAverageEnemyGradientVal(x,y,Direction.NORTHEAST);
+      if(enemyValNE > bestValSoFar)
+      {
+        bestValSoFar = enemyValNE;
+        bestDirection = Direction.NORTHEAST;
+      }
+    }
+
+    if(heading == Direction.NORTH || heading == Direction.NORTHWEST || heading == Direction.WEST)
+    {
+      int enemyValNW = getAverageEnemyGradientVal(x,y,Direction.NORTHWEST);
+      if(enemyValNW > bestValSoFar)
+      {
+        bestValSoFar = enemyValNW;
+        bestDirection = Direction.NORTHWEST;
+      }
+    }
+
+    if(heading == Direction.SOUTH || heading == Direction.SOUTHEAST || heading == Direction.SOUTHWEST)
+    {
+      int enemyValSouth = getAverageEnemyGradientVal(x,y,Direction.SOUTH);
+      if(enemyValSouth > bestValSoFar)
+      {
+        bestValSoFar = enemyValSouth;
+        bestDirection = Direction.SOUTH;
+      }
+    }
+
+    if(heading == Direction.SOUTH || heading == Direction.SOUTHEAST || heading == Direction.EAST)
+    {
+      int enemyValSE = getAverageEnemyGradientVal(x,y,Direction.SOUTHEAST);
+      if(enemyValSE > bestValSoFar)
+      {
+        bestValSoFar = enemyValSE;
+        bestDirection = Direction.SOUTHEAST;
+      }
+    }
+
+    if(heading == Direction.SOUTH || heading == Direction.SOUTHWEST || heading == Direction.WEST)
+    {
+      int enemyValSW = getAverageEnemyGradientVal(x,y,Direction.SOUTHWEST);
+      if(enemyValSW > bestValSoFar)
+      {
+        bestValSoFar = enemyValSW;
+        bestDirection = Direction.SOUTHWEST;
+      }
+    }
+
+    if(heading == Direction.EAST || heading == Direction.NORTHEAST || heading == Direction.SOUTHEAST)
+    {
+      int enemyValEast = getAverageEnemyGradientVal(x,y,Direction.EAST);
+      if(enemyValEast > bestValSoFar)
+      {
+        bestValSoFar = enemyValEast;
+        bestDirection = Direction.EAST;
+      }
+    }
+
+    if(heading == Direction.WEST || heading == Direction.NORTHWEST || heading == Direction.NORTHEAST)
+    {
+      int enemyValWest = getAverageEnemyGradientVal(x,y,Direction.WEST);
+      if(enemyValWest > bestValSoFar)
+      {
+        bestValSoFar = enemyValWest;
+        bestDirection = Direction.WEST;
+      }
+    }
+
+    System.err.println("\tAnt: " + antData.toString() + " : bestEnemyValSoFar = " + bestValSoFar);
+
+    return bestDirection;
+  }
+
   public Goal getCurrentGoal()
   {
     return this.currentGoal;
@@ -694,14 +1015,14 @@ public class Ant
     this.currentGoal = newGoal;
   }
 
-  public FoodObjective getFoodObjective()
+  public Objective getCurrentObjective()
   {
-    return foodObjective;
+    return currentObjective;
   }
 
-  public void setFoodObjective(FoodObjective newObjective)
+  public void setCurrentObjective(Objective newObjective)
   {
-    this.foodObjective = newObjective;
+    this.currentObjective = newObjective;
   }
 
   public void setPath(Path newPath)
@@ -718,14 +1039,45 @@ public class Ant
     path = null;
   }
 
-  boolean attackEnemyAnt(AntData ant, AntAction action)
+  private void attackEnemyAnt(AntAction action)
   {
-    return false;
+    int enemyX = currentObjective.getObjectiveX();
+    int enemyY = currentObjective.getObjectiveY();
+    int antX = antData.gridX;
+    int antY = antData.gridY;
+    Direction enemyDirection = xyCoordinateToDirection(enemyX,enemyY,antX,antY);
+
+    action.type = AntAction.AntActionType.ATTACK;
+    action.direction = enemyDirection;
+
+    EnemyObjective enemyObjective = (EnemyObjective) currentObjective;
+    System.err.println("Ant: " + antData.toString() + " : ATTACKING: " + enemyObjective.getEnemyData().toString());
   }
 
   boolean goToEnemyAnt(AntData ant, AntAction action)
   {
-    return false;
+    if(currentGoal != Goal.ATTACK)
+    {
+      return false;
+    }
+
+    System.err.println("GoToEnemy Ant: " + antData.toString());
+
+    int distanceToEnemyX = Math.abs(antData.gridX - currentObjective.getObjectiveX());
+    int distanceToEnemyY = Math.abs(antData.gridY - currentObjective.getObjectiveY());
+
+    if (distanceToEnemyX <= 1 && distanceToEnemyY <= 1)  //Ant is adjacent to food, pick it up
+    {
+      attackEnemyAnt(action);
+      return true;
+    }
+    else    //Follow enemy diffusion gradient
+    {
+      action.type = AntAction.AntActionType.MOVE;
+      action.direction = getBestDirectionToEnemy(antData.gridX, antData.gridY);
+    }
+
+    return true;
   }
 
   boolean goToFood(AntData ant, AntAction action)
@@ -751,19 +1103,22 @@ public class Ant
         followFoodGradient = true;
       }
     }
-    else if (foodObjective != null)
+    else if (currentObjective != null)
     {
       followFoodGradient = true;
     }
 
     if (followFoodGradient)
     {
-      //System.err.println("Ant: " + antData.toString() + " FOLLOWING GRADIENT");
-      int distanceToFoodX = Math.abs(antData.gridX - foodObjective.getObjectiveX());
-      int distanceToFoodY = Math.abs(antData.gridY - foodObjective.getObjectiveY());
+
+      int distanceToFoodX = Math.abs(antData.gridX - currentObjective.getObjectiveX());
+      int distanceToFoodY = Math.abs(antData.gridY - currentObjective.getObjectiveY());
+
+      //System.err.println("Ant: " + antData.toString() + " FOLLOWING GRADIENT : distToFoodX = " + distanceToFoodX + " : distToFoodY = " + distanceToFoodY);
 
       if (distanceToFoodX <= 1 && distanceToFoodY <= 1)  //Ant is adjacent to food, pick it up
       {
+        //System.err.println("MADE IT TO FOOD! " + antData.toString());
         followFoodGradient = false;
         pickUpFood(action);
         return true;
@@ -783,53 +1138,29 @@ public class Ant
     return false;
   }
 
-  /**
-   * todo sometimes the ants get stuck against the coast...investigate what's going on
-   */
-  boolean goExplore(AntData ant, AntAction action)
+  public AntAction chooseAntAction()
   {
+    //System.out.println("chooseAntAction()...");
+    AntAction antAction = new AntAction(AntAction.AntActionType.STASIS);
+    AntData antData = this.antData;
 
-    if (currentGoal != Goal.EXPLORE)
-    {
-      return false;
-    }
+    if (antData.ticksUntilNextAction > 1) return antAction;
 
-    if (checkAttritionDamage)  //Called once every 5,000 frames (when an ant should have lost 1 health of attrition damage)
-    {
-      int distanceToNest = NestManager.calculateDistance(antData.gridX, antData.gridY, centerX, centerY);
-      int ticksToGetHome = distanceToNest * 2;  //Not accounting for elevation
-      int approxTripAttrition = ticksToGetHome / 5000; //5000 ticks per unit of attrition damage
+    //if (exitNest(antData,antAction)) return antAction;
 
-      if (antData.health - approxTripAttrition <= 8) //If the ant can make it home with 8 or less health, it should head back to the nest
-      {
-        currentGoal = Goal.RETURNTONEST;
-      }
+    //if (this.ant.attackEnemyAnt(ant, action)) return action;
 
-      checkAttritionDamage = false;
-    }
+    if (goToNest(antData,antAction)) return antAction;
 
-    Direction dir;
+    if (goToEnemyAnt(antData,antAction)) return antAction;
 
-    if (!randomWalk)
-    {
-      dir = getBestDirectionToExplore(antData.gridX, antData.gridY);
-    }
-    else  //If randomly walking in a direction, keep going for 5 paces
-    {
-      randomSteps++;
+    if (goToFood(antData,antAction)) return antAction;
 
-      if (randomSteps >= 5)
-      {
-        randomWalk = false;
-        randomSteps = 0;
-      }
-      dir = lastDir;
-    }
+    if (goToGoodAnt(antData,antAction)) return antAction;
 
-    action.type = AntAction.AntActionType.MOVE;
-    action.direction = dir;
-    lastDir = dir;
-    //mapManager.addAntStep(ant.gridX,ant.gridY,randomWalk);   //Used for testing
-    return true;
+    //if (goExplore(antData,antAction)) return antAction;
+
+    return antAction;
   }
+
 }

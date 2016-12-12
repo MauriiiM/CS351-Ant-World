@@ -40,11 +40,16 @@ public class MapManager
   private static final int FOODVALUE = 1000;
   private static final int PATHSTARTRADIUS = 5;
   private static final int PATHSTARTVALUE = 1000;
+  private static final int ENEMYRADIUS = 10;
+  private static final int ENEMYVALUE = 500;
+  private static final int ENEMYFADEVAL = 30;
   private DiffusionGradient explorationGradient;
   private DiffusionGradient foodGradient;
   private DiffusionGradient pathStartGradient;
+  private DiffusionGradient enemyGradient;
   private HashSet<MapCell> exploredRecently;
   private LinkedList<Coordinate> occupiedRecently;
+  private HashSet<MapCell> hostileRecently;
 
   ArrayList<AntStep> antSteps = new ArrayList<>();
 
@@ -55,9 +60,11 @@ public class MapManager
     readMap(map);
     exploredRecently = new HashSet<>();
     occupiedRecently = new LinkedList<>();
+    hostileRecently = new HashSet<>();
     explorationGradient = new DiffusionGradient(EXPLORATIONRADIUS,EXPLORATIONVALUE,DIFFUSIONCOEFFICIENT);
     foodGradient = new DiffusionGradient(FOODRADIUS, FOODVALUE, DIFFUSIONCOEFFICIENT);
     pathStartGradient = new DiffusionGradient(PATHSTARTRADIUS,PATHSTARTVALUE,DIFFUSIONCOEFFICIENT);
+    enemyGradient = new DiffusionGradient(ENEMYRADIUS,ENEMYVALUE,DIFFUSIONCOEFFICIENT);
     //drawMap();  //Used for testing
   }
 
@@ -246,9 +253,37 @@ public class MapManager
     }
   }
 
-  /*
-   *@todo: Need a function to erase the gradients once a food source is depleted. (food gradient and path start gradient)
-   */
+  public void fadeEnemyProximityGradient()
+  {
+    synchronized (world)
+    {
+
+      for(Iterator<MapCell> i = hostileRecently.iterator(); i.hasNext();)
+      {
+        MapCell nextCell = i.next();
+        int currentVal = nextCell.getEnemyVal();
+        if(currentVal > 0) //1000-15 = 985
+        {
+          currentVal -= ENEMYFADEVAL;
+          if(currentVal < 0)
+          {
+            currentVal = 0;
+          }
+          nextCell.setEnemyVal(currentVal);
+        }
+        else  //Else cell has regenerated, remove it.
+        {
+          i.remove();
+        }
+      }
+    }
+  }
+
+  public void updateEnemyAntGradient(int enemyX, int enemyY)
+  {
+    writeGradientToMap(enemyX,enemyY,ENEMYRADIUS,enemyGradient.getGradient(),GradientType.ENEMY);
+  }
+
   public void createPathStartGradient(int pathStartX, int pathStartY)
   {
     writeGradientToMap(pathStartX, pathStartY, PATHSTARTRADIUS, pathStartGradient.getGradient(),GradientType.PATH);
@@ -312,6 +347,45 @@ public class MapManager
     synchronized (world)
     {
       return world[x][y].getPathVal();
+    }
+  }
+
+  public int getEnemyProximityVal(int x, int y)
+  {
+    if(x < 0 || x >= mapWidth || y < 0 || y >= mapHeight)
+    {
+      return 0;
+    }
+
+    synchronized (world)
+    {
+      return world[x][y].getEnemyVal();
+    }
+  }
+
+  public LandType getLandType(int x, int y)
+  {
+    if(x < 0 || x >= mapWidth || y < 0 || y >= mapHeight)
+    {
+      return null;
+    }
+
+    synchronized (world)
+    {
+      return world[x][y].getLandType();
+    }
+  }
+
+  public boolean getOccupied(int x, int y)
+  {
+    if(x < 0 || x >= mapWidth || y < 0 || y >= mapHeight)
+    {
+      return true;  //Return true if out of bounds so that nothing tries to go there.
+    }
+
+    synchronized (world)
+    {
+      return world[x][y].getOccupied();
     }
   }
 
@@ -430,8 +504,15 @@ public class MapManager
                 world[nextX][nextY].setExplorationVal(nextVal);
                 break;
               case PATH:
-                nextVal *= PATH.polarity();
                 world[nextX][nextY].setPathVal(nextVal);
+                break;
+              case ENEMY:
+                int currentEnemyVal = world[nextX][nextY].getEnemyVal();
+                if(nextVal > currentEnemyVal)
+                {
+                  hostileRecently.add(world[nextX][nextY]);
+                  world[nextX][nextY].setEnemyVal(nextVal);
+                }
                 break;
             }
           }
