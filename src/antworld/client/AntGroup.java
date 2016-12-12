@@ -330,6 +330,8 @@ public class AntGroup
       {
         nextAntData.myAction = nextAnt.chooseAntAction();
         System.err.println("\t\t CHOSE ACTION: " + nextAntData.toString());
+        System.err.println("\t\t goal=: " + nextAnt.getCurrentGoal().toString() + " HasPath= " + nextAnt.hasPath + " pathstepCount= " + nextAnt.pathStepCount);
+        System.err.println("\t\t following gradient = " + nextAnt.followFoodGradient);
       }
     }
   }

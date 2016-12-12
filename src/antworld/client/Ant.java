@@ -325,8 +325,9 @@ public class Ant
       }
       else if (ant.carryUnits > 0 || path != waterPath)
       {
-        currentGoal = Goal.RETURNTONEST;
+        //currentGoal = Goal.RETURNTONEST;
         //goToNest(ant, action);    //CAUSES STACK OVERFLOW
+        findPathToNest(action);
       }
 //      action.quantity = ant.antType.getCarryCapacity() - 1;
       return true;
