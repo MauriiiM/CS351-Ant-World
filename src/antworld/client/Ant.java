@@ -5,6 +5,7 @@ import antworld.client.navigation.NearestWaterPaths;
 import antworld.client.navigation.Path;
 import antworld.client.navigation.PathFinder;
 import antworld.common.*;
+import antworld.server.Nest;
 
 import java.util.Random;
 
@@ -109,25 +110,17 @@ public class Ant
       {
         return healSelf(action);
       }
-
-      if (data.foodStockPile[0] < (necessaryWater = data.myAntList.size() /* *2*/) && waterCarryCap < necessaryWater)
+      if (data.foodStockPile[0] < (necessaryWater = data.myAntList.size() * 2) && waterCarryCap < necessaryWater)//if nest needs water
       {
         if (!hasPath)
         {
           if (waterPath == null) //this will set the local water path
           {
-            for (int i = 0; i < NearestWaterPaths.allWaterPaths.length; i++)
-            {
-              if (NearestWaterPaths.allWaterPaths[i][0] == centerX && NearestWaterPaths.allWaterPaths[i][1] == centerY)
-              {
-                waterPath = pathFinder.findPath(NearestWaterPaths.allWaterPaths[i][2], NearestWaterPaths.allWaterPaths[i][3], centerX, centerY);
-                h2oPathStepCount = waterPath.getPath().size() - 1;
-              }
-            }
+            waterPath = pathFinder.findPath(NearestWaterPaths.valueOf(antData.nestName.name()).waterX(), NearestWaterPaths.valueOf(antData.nestName.name()).waterY(), centerX, centerY);
+            h2oPathStepCount = waterPath.getPath().size() - 1;
           }
           path = waterPath;
           waterCarryCap += ant.antType.getCarryCapacity();
-          System.err.println(waterCarryCap);
           hasPath = true;
 //          currentGoal = Goal.COLLECTWATER;
           action.type = AntAction.AntActionType.EXIT_NEST;
@@ -218,6 +211,7 @@ public class Ant
     return false;
   }
 
+  //@todo ants will not always get to their location if their path is blocked and they didnt move to the location
   boolean isFollowingPath(AntData ant, AntAction action)
   {
     if (hasPath)

@@ -3,21 +3,19 @@ package antworld.client.navigation;
 import antworld.common.LandType;
 import antworld.common.NestNameEnum;
 import antworld.server.Cell;
-import antworld.server.Nest;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.awt.image.ColorConvertOp;
 import java.io.*;
 import java.net.URL;
 
 /**
  * @todo find nest center, spiral out to find nearest water, when found use A* and write map
  */
-public class FindClosestWater
+public class FindClosest
 {
-  final boolean DEBUG = true;
+  final boolean DEBUG = false;
   private BufferedImage mapImage;
   private int nestNum = 0;
   private Cell[][] geomap;
@@ -27,7 +25,7 @@ public class FindClosestWater
 
   Path path;
 
-  FindClosestWater(String imagePath)
+  FindClosest(String imagePath)
   {
     MapManager mapManager = new MapManager(imagePath);
     geomap = mapManager.getGeoMap();
@@ -39,39 +37,41 @@ public class FindClosestWater
     int green, blue;
     Color currentPixel;
 
-    if (!DEBUG) System.out.println("public static final int[][] allWaterPaths = new int[][]{");
+//    if (!DEBUG) System.out.println("public static final int[][] allWaterPaths = new int[][]{");
     for (int i = 0; i < nestXY.length; i++)
     {
 //      System.out.printf("%s(%d,%d), nearest water(%d,%d)\n",
 //          NestNameEnum.values()[i], nestXY[i].x, nestXY[i].y, waterXY[i].x, waterXY[i].y);
       if (!DEBUG)
       {
-        System.out.printf("new int[]{%d, %d, %d, %d},\n", nestXY[i].x, nestXY[i].y, waterXY[i].x, waterXY[i].y);
+        System.out.printf("%s { public int waterX(){ return %d;}\npublic int waterY(){ return %d;}},\n", NestNameEnum.values()[i], waterXY[i].x, waterXY[i].y);
       }
-
-      pathfinder = new PathFinder(geomap, mapImage.getWidth(), mapImage.getHeight(), nestXY[i].x, nestXY[i].y);
-      path = pathfinder.findPath(waterXY[i].x, waterXY[i].y, nestXY[i].x, nestXY[i].y);
-      for (int j = 0; j < path.getPath().size() - 1; j++)
+      else
       {
-        if (!DEBUG)
+        pathfinder = new PathFinder(geomap, mapImage.getWidth(), mapImage.getHeight(), nestXY[i].x, nestXY[i].y);
+        path = pathfinder.findPath(waterXY[i].x, waterXY[i].y, nestXY[i].x, nestXY[i].y);
+        for (int j = 0; j < path.getPath().size() - 1; j++)
         {
-          if (j != path.getPath().size() - 1)
-            System.out.printf("%d, %d, ", path.getPath().get(j).getX(), path.getPath().get(j).getY());
-          else System.out.printf("%d, %d", path.getPath().get(j).getX(), path.getPath().get(j).getY());
-        }
-        else
-        {
-          currentPixel = new Color(mapImage.getRGB(path.getPath().get(j).getX(), path.getPath().get(j).getY()));
-          if (red == 160) red = 40;
-          green = currentPixel.getGreen();
-          blue = currentPixel.getBlue();
-          red += 40;
-          rgb = new Color(red, green, blue);
-          mapImage.setRGB(path.getPath().get(j).getX(), path.getPath().get(j).getY(), rgb.getRGB());
+          if (!DEBUG)
+          {
+            if (j != path.getPath().size() - 1)
+              System.out.printf("%d, %d, ", path.getPath().get(j).getX(), path.getPath().get(j).getY());
+            else System.out.printf("%d, %d", path.getPath().get(j).getX(), path.getPath().get(j).getY());
+          }
+          else
+          {
+            currentPixel = new Color(mapImage.getRGB(path.getPath().get(j).getX(), path.getPath().get(j).getY()));
+            if (red == 160) red = 40;
+            green = currentPixel.getGreen();
+            blue = currentPixel.getBlue();
+            red += 40;
+            rgb = new Color(red, green, blue);
+            mapImage.setRGB(path.getPath().get(j).getX(), path.getPath().get(j).getY(), rgb.getRGB());
+          }
         }
       }
     }
-    if (!DEBUG) System.out.printf("};\n");
+//    if (!DEBUG) System.out.printf("};\n");
 
     try
     {
@@ -178,7 +178,7 @@ public class FindClosestWater
 
   public static void main(String args[])
   {
-    FindClosestWater cp = new FindClosestWater("resources/AntWorld.png");
+    FindClosest cp = new FindClosest("resources/AntWorld.png");
 
   }
 }
