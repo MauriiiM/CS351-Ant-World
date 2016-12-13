@@ -8,7 +8,7 @@ import antworld.server.Cell;
  * Ex: food proximity, enemy proximity, enemy nest proximity, etc.
  * Created by John on 11/25/2016.
  */
-public class MapCell extends Cell
+public class MapCell
 {
 
   private boolean occupied = false; //True if currently occupied by an ant
@@ -16,12 +16,18 @@ public class MapCell extends Cell
   private int explorationVal; //Has this cell been explored or has it been a while since it was explored?
   private int pathVal;  //How close is this cell to the start of a path
   private int enemyVal;
+  private final int height;
+  private final int x, y;
+  private LandType landType;
 
 
   public MapCell(LandType landType, int height, int x, int y)
   {
-    super(landType,height,x,y);   //todo: Are we allowed to extend classes from the server? If not, no big deal.
     foodProximityVal = 0;
+    this.landType = landType;
+    this.height = height;
+    this.x = x;
+    this.y = y;
 
     if(landType == LandType.WATER || landType == LandType.NEST)
     {
@@ -41,6 +47,12 @@ public class MapCell extends Cell
       this.enemyVal = 0;
     }
   }
+  public void setLandType(LandType landType)
+  { this.landType = landType;}
+  public LandType getLandType() {return landType;}
+  public int getHeight() {return height;}
+  public int getLocationX() {return x;}
+  public int getLocationY() {return y;}
 
   public int getEnemyVal()
   {

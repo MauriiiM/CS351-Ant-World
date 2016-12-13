@@ -16,7 +16,7 @@ import java.util.Random;
  */
 public class AntGroup
 {
-  static final int ANTS_PER_GROUP = 4;//this will need tweeking
+  static final int ANTS_PER_GROUP = 2;//this will need tweeking
 
   static Random random = Constants.random;
   static PathFinder pathFinder;
@@ -80,6 +80,11 @@ public class AntGroup
   public void setGroupGoal(Goal newGoal)
   {
     groupGoal = newGoal;
+    for(int i=0; i < group.size();i++)
+    {
+      group.get(i).setCurrentGoal(groupGoal);
+      System.err.println("SET A NEW GOAL: TO ANT " + group.get(i).getAntData().toString());
+    }
   }
 
   public Objective getGroupObjective()
@@ -90,6 +95,10 @@ public class AntGroup
   public void setGroupObjective(Objective newObjective)
   {
     groupObjective = newObjective;
+    for(int i=0; i < group.size();i++)
+    {
+      group.get(i).setCurrentObjective(groupObjective);
+    }
   }
 
   public boolean isFull()
@@ -317,7 +326,7 @@ public class AntGroup
   //Used when ants are choosing their own actions to obtain a nearby objective
   public void chooseAntActions()
   {
-    System.err.println("Group: " + ID + " ChooseAntActions..................Goal = " + groupGoal.toString());
+    //System.err.println("Group: " + ID + " ChooseAntActions..................Goal = " + groupGoal.toString());
 
     updateLeaderPosition();
 
@@ -486,22 +495,26 @@ public class AntGroup
   private void freeAntsFromOrders(Goal goal, Objective objective)
   {
     System.err.println("FREE ANTS FROM ORDERS");
+    /*
     for(int i= 0; i<group.size();i++)
     {
       Ant nextAnt = group.get(i);
       nextAnt.setCurrentGoal(goal);
       nextAnt.setCurrentObjective(objective);
     }
+    */
     followOrdered = false;
   }
 
   //only called when ant's in the nest and will be true
+  /*
   boolean dropFood(AntData ant, AntAction action)
   {
     action.type = AntAction.AntActionType.DROP;
     action.quantity = ant.carryUnits;
     return true;
   }
+  */
 
   boolean healSelf(AntAction action)
   {
@@ -518,12 +531,12 @@ public class AntGroup
   //Ants always exit nest at a random edge of the nest
   boolean exitNest(AntData ant, AntAction action)
   {
-    System.err.println("Exit Nest from AntGroup");
+    //System.err.println("Exit Nest from AntGroup");
     if (ant.underground)
     {
       if (ant.carryUnits > 0)
       {
-        return dropFood(ant, action);
+        //return dropFood(ant, action);
       }
 
       if(ant.health < 20)
@@ -1233,81 +1246,90 @@ public class AntGroup
 
     if(heading == Direction.NORTH || heading == Direction.NORTHEAST || heading == Direction.NORTHWEST)
     {
-      int enemyValNorth = getAverageEnemyGradientVal(x,y,Direction.NORTH);
-      if(enemyValNorth > bestValSoFar)
+      if(!mapManager.getOccupied(x,y-1))
       {
-        bestValSoFar = enemyValNorth;
-        bestDirection = Direction.NORTH;
+        int enemyValNorth = getAverageEnemyGradientVal(x,y,Direction.NORTH);
+        if(enemyValNorth > bestValSoFar)
+        {
+          bestValSoFar = enemyValNorth;
+          bestDirection = Direction.NORTH;
+        }
       }
     }
 
     if(heading == Direction.NORTH || heading == Direction.NORTHEAST || heading == Direction.EAST)
     {
-      int enemyValNE = getAverageEnemyGradientVal(x,y,Direction.NORTHEAST);
-      if(enemyValNE > bestValSoFar)
-      {
-        bestValSoFar = enemyValNE;
-        bestDirection = Direction.NORTHEAST;
+      if(!mapManager.getOccupied(x+1,y-1)) {
+        int enemyValNE = getAverageEnemyGradientVal(x, y, Direction.NORTHEAST);
+        if (enemyValNE > bestValSoFar) {
+          bestValSoFar = enemyValNE;
+          bestDirection = Direction.NORTHEAST;
+        }
       }
     }
 
     if(heading == Direction.NORTH || heading == Direction.NORTHWEST || heading == Direction.WEST)
     {
-      int enemyValNW = getAverageEnemyGradientVal(x,y,Direction.NORTHWEST);
-      if(enemyValNW > bestValSoFar)
-      {
-        bestValSoFar = enemyValNW;
-        bestDirection = Direction.NORTHWEST;
+      if(!mapManager.getOccupied(x-1,y-1)) {
+        int enemyValNW = getAverageEnemyGradientVal(x, y, Direction.NORTHWEST);
+        if (enemyValNW > bestValSoFar) {
+          bestValSoFar = enemyValNW;
+          bestDirection = Direction.NORTHWEST;
+        }
       }
     }
 
     if(heading == Direction.SOUTH || heading == Direction.SOUTHEAST || heading == Direction.SOUTHWEST)
     {
-      int enemyValSouth = getAverageEnemyGradientVal(x,y,Direction.SOUTH);
-      if(enemyValSouth > bestValSoFar)
-      {
-        bestValSoFar = enemyValSouth;
-        bestDirection = Direction.SOUTH;
+      if(!mapManager.getOccupied(x,y+1)) {
+        int enemyValSouth = getAverageEnemyGradientVal(x, y, Direction.SOUTH);
+        if (enemyValSouth > bestValSoFar) {
+          bestValSoFar = enemyValSouth;
+          bestDirection = Direction.SOUTH;
+        }
       }
     }
 
     if(heading == Direction.SOUTH || heading == Direction.SOUTHEAST || heading == Direction.EAST)
     {
-      int enemyValSE = getAverageEnemyGradientVal(x,y,Direction.SOUTHEAST);
-      if(enemyValSE > bestValSoFar)
-      {
-        bestValSoFar = enemyValSE;
-        bestDirection = Direction.SOUTHEAST;
+      if(!mapManager.getOccupied(x+1,y+1)) {
+        int enemyValSE = getAverageEnemyGradientVal(x, y, Direction.SOUTHEAST);
+        if (enemyValSE > bestValSoFar) {
+          bestValSoFar = enemyValSE;
+          bestDirection = Direction.SOUTHEAST;
+        }
       }
     }
 
     if(heading == Direction.SOUTH || heading == Direction.SOUTHWEST || heading == Direction.WEST)
     {
-      int enemyValSW = getAverageEnemyGradientVal(x,y,Direction.SOUTHWEST);
-      if(enemyValSW > bestValSoFar)
-      {
-        bestValSoFar = enemyValSW;
-        bestDirection = Direction.SOUTHWEST;
+      if(!mapManager.getOccupied(x-1,y+1)) {
+        int enemyValSW = getAverageEnemyGradientVal(x, y, Direction.SOUTHWEST);
+        if (enemyValSW > bestValSoFar) {
+          bestValSoFar = enemyValSW;
+          bestDirection = Direction.SOUTHWEST;
+        }
       }
     }
 
     if(heading == Direction.EAST || heading == Direction.NORTHEAST || heading == Direction.SOUTHEAST)
     {
-      int enemyValEast = getAverageEnemyGradientVal(x,y,Direction.EAST);
-      if(enemyValEast > bestValSoFar)
-      {
-        bestValSoFar = enemyValEast;
-        bestDirection = Direction.EAST;
+      if(!mapManager.getOccupied(x+1,y)) {
+        int enemyValEast = getAverageEnemyGradientVal(x, y, Direction.EAST);
+        if (enemyValEast > bestValSoFar) {
+          bestValSoFar = enemyValEast;
+          bestDirection = Direction.EAST;
+        }
       }
     }
 
     if(heading == Direction.WEST || heading == Direction.NORTHWEST || heading == Direction.NORTHEAST)
     {
-      int enemyValWest = getAverageEnemyGradientVal(x,y,Direction.WEST);
-      if(enemyValWest > bestValSoFar)
-      {
-        bestValSoFar = enemyValWest;
-        bestDirection = Direction.WEST;
+      if(!mapManager.getOccupied(x-1,y)) {
+        int enemyValWest = getAverageEnemyGradientVal(x, y, Direction.WEST);
+        if (enemyValWest > bestValSoFar) {
+          bestDirection = Direction.WEST;
+        }
       }
     }
 
@@ -1357,9 +1379,10 @@ public class AntGroup
     int distanceToEnemyX = Math.abs(ant.gridX - groupObjective.getObjectiveX());
     int distanceToEnemyY = Math.abs(ant.gridY - groupObjective.getObjectiveY());
 
-    if (distanceToEnemyX <= 1 && distanceToEnemyY <= 1)  //Ant is adjacent to food, pick it up
+    if (distanceToEnemyX <= 5 && distanceToEnemyY <= 5)  //Ant is adjacent to food, pick it up
     {
-      attackEnemyAnt(ant,action);
+      //attackEnemyAnt(ant,action);
+      freeAntsFromOrders(groupGoal,groupObjective);
       return true;
     }
     else    //Follow enemy diffusion gradient

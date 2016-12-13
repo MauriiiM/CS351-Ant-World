@@ -45,7 +45,7 @@ public class NestManager
     groupMap = new HashMap<>();
     foodManager = new FoodManager(groupMap,pathFinder);
     foodManager.start();
-    enemyManager = new EnemyManager(antMap,pathFinder);
+    enemyManager = new EnemyManager(groupMap,pathFinder);
     enemyManager.start();
     Ant.mapManager = mapManager;
     Ant.pathFinder = pathFinder;
@@ -145,7 +145,7 @@ public class NestManager
     if(enemySet.size() > 0)  //If the foodSet is greater than 0, send a copy to the food manager
     {
       AntData[] enemyArray = enemySet.toArray(new AntData[enemySet.size()]); //Create a FoodData array for the food manager to read. This keeps the foodset thread safe.
-      //enemyManager.setEnemySet(enemyArray);
+      enemyManager.setEnemySet(enemyArray);
     }
 
     AntGroup nextGroup;

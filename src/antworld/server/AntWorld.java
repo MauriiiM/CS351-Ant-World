@@ -66,7 +66,7 @@ public class AntWorld implements ActionListener
 
     //********************* Note On map replacement  **************************
     //The map must have at least a one pixel a boarder of water: LandType.WATER.getColor.
-    BufferedImage map = Util.loadImage("AntTestWorldBattle.png", window);
+    BufferedImage map = Util.loadImage("AntTestWorldDiffusion.png", window);
     worldWidth = map.getWidth();
     worldHeight = map.getHeight();
 

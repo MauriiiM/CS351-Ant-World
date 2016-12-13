@@ -10,7 +10,7 @@ import antworld.common.*;
 public class Client
 {
   private static final boolean DEBUG = true;
-  private final String mapFilePath = "resources/AntTestWorldBattle.png"; //resources/AntTestWorldDiffusion.png
+  private final String mapFilePath = "resources/AntTestWorldDiffusion.png"; //resources/AntTestWorldDiffusion.png
   private final TeamNameEnum myTeam;
   private static final long password = 962740848319L;//Each team has been assigned a random password.
   private ObjectInputStream inputStream = null;
@@ -153,7 +153,7 @@ public class Client
     {
       try
       {
-        //if (DEBUG) System.out.println("Client: chooseActions: " + myNestName);
+        if (DEBUG) System.out.println("Client: chooseActions: " + myNestName);
         nestManager.chooseActionsOfAllAnts(data);   //Send the commData to the nest manager to work with
         CommData sendData = data.packageForSendToServer();  //Send the commData back to the server once the nest manager is done
 

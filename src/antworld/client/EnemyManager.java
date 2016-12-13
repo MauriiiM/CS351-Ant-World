@@ -18,12 +18,12 @@ public class EnemyManager extends Thread
   private PathFinder pathFinder;
   private volatile boolean running = true;
   private volatile boolean readEnemySet = false;
-  private HashMap<Integer, Ant> antMap;
+  private HashMap<Integer, AntGroup> groupMap;
   private final int ENEMYRESPONSEBUFFER = 10;  //How far away can an ant be to get assigned to target an enemy? Enemy distance to nest + buffer
 
-  public EnemyManager(HashMap<Integer, Ant> antMap, PathFinder pathFinder)
+  public EnemyManager(HashMap<Integer, AntGroup> groupMap, PathFinder pathFinder)
   {
-    this.antMap = antMap;
+    this.groupMap = groupMap;
     this.pathFinder = pathFinder;       //Will I need to synchronize pathFinder?
     EnemyComparator enemyComparator = new EnemyComparator();
     unprocessedEnemies = new PriorityQueue<>(enemyComparator);
@@ -37,17 +37,25 @@ public class EnemyManager extends Thread
     {
       enemyAntServerCopy = newServerEnemySet; //Switch pointer
     }
+    //System.err.println("Updated enemy set...");
     readEnemySet = true; //Mark new server enemy set to be read
   }
 
   //Reads an enemy set and updates the manager's own set of enemies
-  private void readFoodSet(AntData[] enemyArray)
+  private void readEnemySet(AntData[] enemyArray)
   {
-    System.err.println("reading ENEMY set");
+    //System.err.println("reading ENEMY set");
     AntData nextEnemy;
     EnemyObjective nextStoredEnemy;
     int enemyID;
     int storedEnemyID;
+
+    //Reset visibility for all enemy objectives. If they are still visible it will be set back to true
+    for(Iterator<EnemyObjective> iterator = enemyObjectives.iterator(); iterator.hasNext();) {
+      nextStoredEnemy = iterator.next();
+      nextStoredEnemy.setStillVisible(false);
+    }
+
 
     for (int i=0; i<enemyArray.length; i++)  //Iterate over the food array from the server
     {
@@ -67,15 +75,22 @@ public class EnemyManager extends Thread
         {
           nextStoredEnemy = iterator.next();
           storedEnemyID = nextStoredEnemy.getEnemyID();
-          System.err.println("nextStoredEnemy = " + storedEnemyID);
+          //System.err.println("nextStoredEnemy = " + storedEnemyID);
 
-          if(nextStoredEnemy.completed) //If this enemy has been killed
+          if(storedEnemyID == enemyID)  //If the IDs match, must be an enemy we've seen before
           {
-            if(!nextStoredEnemy.getTargeted())  //There are no ants targeting this enemy anymore - important??
-            {
-              System.err.println("REMOVED ENEMY: enemyData=" + nextStoredEnemy.getEnemyData().toString());
-              iterator.remove();                          //Not removing gradient, just letting it fade away - matters?
-            }
+            System.err.println("Found old enemy: " + nextStoredEnemy.getEnemyData().toString());
+            nextStoredEnemy.updateEnemyData(nextEnemy); //Update existing site FoodData
+            System.err.println("\t new data: " + nextStoredEnemy.getEnemyData().toString());
+            nextStoredEnemy.setStillVisible(true);
+            newEnemy = false;
+          }
+
+          if(nextStoredEnemy.completed || !nextStoredEnemy.isStillVisible()) //If this enemy has been killed
+          {
+            System.err.println("REMOVED ENEMY: enemyData=" + nextStoredEnemy.getEnemyData().toString());
+            nextStoredEnemy.unallocateGroup();
+            iterator.remove();                          //Not removing gradient, just letting it fade away - matters?
           }
           else  //If this enemy is still active and unengaged, try to assign an ant to engage it
           {
@@ -84,13 +99,6 @@ public class EnemyManager extends Thread
               System.err.println("Enemy needs to be engaged! " + nextStoredEnemy.getEnemyData().toString());
               unprocessedEnemies.add(nextStoredEnemy);
             }
-          }
-
-          if(storedEnemyID == enemyID)  //If the IDs match, must be an enemy we've seen before
-          {
-            System.err.println("Found old enemy: " + nextStoredEnemy.getEnemyData().toString());
-            nextStoredEnemy.updateEnemyData(nextEnemy); //Update existing site FoodData
-            newEnemy = false;
           }
         }
 
@@ -110,47 +118,87 @@ public class EnemyManager extends Thread
     unprocessedEnemies.add(newObjective);
   }
 
-  //Decides which ants to allocate to an enemy objective
-  private void allocateAntsToEnemy(EnemyObjective enemyObjective)
+  //Decides which group to allocate to an enemy objective
+  private void allocateGroupToEnemy(EnemyObjective enemyObjective)
   {
     int enemyX = enemyObjective.objectiveX;
     int enemyY = enemyObjective.objectiveY;
-    AntComparator comparator = new AntComparator(enemyX, enemyY);
-    PriorityQueue<Ant> antQueue = new PriorityQueue<>(comparator);
+    GroupComparator comparator = new GroupComparator(enemyX, enemyY);
+    PriorityQueue<AntGroup> groupQueue = new PriorityQueue<>(comparator);
     int maxEnemyResponseDistance = NestManager.calculateDistance(enemyX,enemyY,NestManager.NESTX,NestManager.NESTY) + ENEMYRESPONSEBUFFER;
 
-    for (Integer antData : antMap.keySet())
+    for (Integer id : groupMap.keySet())
     {
-      Ant ant = antMap.get(antData);                                                 //Need to make sure that the ant is not underground either!
-      if(ant.getCurrentGoal() == Goal.EXPLORE && !ant.getAntData().underground) //If the ant was not already returning to the nest for a reason/ant is available to go collect food
-      {
-        antQueue.add(ant);
+      AntGroup group = groupMap.get(id);                                                 //Need to make sure that the group is not underground either!
+      if(!group.getGroupLeader().getAntData().underground){
+        if(group.getGroupGoal() == Goal.EXPLORE || group.getGroupGoal() == Goal.ATTACK) //If the group was not already returning to the nest for a reason/group is available to fight
+        {
+          groupQueue.add(group);
+        }
       }
     }
 
-    while(antQueue.size() > 0 && unprocessedEnemies.size() > 0)
+    while(groupQueue.size() > 0 && unprocessedEnemies.size() > 0)
     {
-      Ant nextAnt = antQueue.poll();  //Add ant to foodObjective
-      AntData nextAntData = nextAnt.getAntData();
-      int distanceToFood = NestManager.calculateDistance(enemyX,enemyY,nextAntData.gridX,nextAntData.gridY);
+      AntGroup nextGroup = groupQueue.poll();  //Add ant to foodObjective
+      AntData groupLeaderData = nextGroup.getGroupLeader().getAntData();
+      int distanceToFood = NestManager.calculateDistance(enemyX,enemyY,groupLeaderData.gridX,groupLeaderData.gridY);
       if(distanceToFood <= maxEnemyResponseDistance)   //If an ant is within the range of the food objective
       {
-        //todo Add a way for an ant to compare enemies
-        if(nextAnt.getCurrentGoal() != Goal.ATTACK)
+        if(nextGroup.getGroupGoal() != Goal.ATTACK)
         {
-          allocateAnt(nextAnt,enemyObjective);  //At the moment just allocates one ant to one enemy
+          allocateGroup(nextGroup,enemyObjective);  //At the moment just allocates one ant to one enemy
           unprocessedEnemies.remove(enemyObjective);
+        }
+        else if(nextGroup.getGroupGoal() == Goal.ATTACK)
+        {
+          if(nextGroup.getGroupObjective() == null)
+          {
+            allocateGroup(nextGroup,enemyObjective);  //At the moment just allocates one ant to one enemy
+            unprocessedEnemies.remove(enemyObjective);
+          }
+          else
+          {
+            EnemyObjective currentObjective = (EnemyObjective) nextGroup.getGroupObjective();
+            if(currentObjective != compareEnemyObjectives(nextGroup,currentObjective,enemyObjective))
+            {
+              System.err.println("ROUTING TO BETTER ENEMY");
+              currentObjective.unallocateGroup();
+              allocateGroup(nextGroup,enemyObjective);  //At the moment just allocates one ant to one enemy
+              unprocessedEnemies.remove(enemyObjective);
+            }
+          }
         }
       }
     }
   }
 
-  private void allocateAnt(Ant ant, EnemyObjective enemyObjective)
+  private void allocateGroup(AntGroup group, EnemyObjective enemyObjective)
   {
-    ant.setCurrentGoal(Goal.ATTACK);
-    enemyObjective.allocateAnt(ant);      //Allocate ant to new food objective
-    AntData antData = ant.getAntData();
-    System.err.println("Allocating ant to enemy: " + antData.toString() + " : enemy = " + enemyObjective.getEnemyData().toString());
+    group.setGroupGoal(Goal.ATTACK);
+    enemyObjective.allocateGroup(group);      //Allocate ant to new food objective
+    System.err.println("Allocating Group " + group.ID + " to enemy: " + enemyObjective.getEnemyData().toString());
+  }
+
+  private EnemyObjective compareEnemyObjectives(AntGroup group, EnemyObjective currentEnemy, EnemyObjective otherEnemy)
+  {
+    int groupX = group.getGroupLeader().getAntData().gridX;
+    int groupY = group.getGroupLeader().getAntData().gridY;
+    int currentEnemyX = currentEnemy.getObjectiveX();
+    int currentEnemyY = currentEnemy.getObjectiveY();
+    int otherEnemyX = otherEnemy.getObjectiveX();
+    int otherEnemyY = otherEnemy.getObjectiveY();
+    int currentEnemyDistance = NestManager.calculateDistance(groupX,groupY,currentEnemyX,currentEnemyY);
+    int otherEnemyDistance = NestManager.calculateDistance(groupX,groupY,otherEnemyX,otherEnemyY);
+
+    if(currentEnemyDistance <= otherEnemyDistance) //Current enemy objective is still closer or just as close
+    {
+      return currentEnemy;
+    }
+    else
+    {
+      return otherEnemy;
+    }
   }
 
   @Override
@@ -162,7 +210,7 @@ public class EnemyManager extends Thread
       {
         synchronized (enemyAntServerCopy)  //Maintain a lock on the food set it's reading
         {
-          readFoodSet(enemyAntServerCopy);
+          readEnemySet(enemyAntServerCopy);
 
           if (unprocessedEnemies.size() > 0) {
 
@@ -171,11 +219,11 @@ public class EnemyManager extends Thread
             unprocessedEnemies.toArray(array);
             for(int i = 0; i < array.length; i++)
             {
-              System.err.println("Enemy Queue: \t " + array[i].getEnemyData().toString());
+              //System.err.println("Enemy Queue: \t " + array[i].getEnemyData().toString());
             }
 
             EnemyObjective nextEnemyObjective = unprocessedEnemies.peek(); //Peek instead of poll in case the food objective can't be processed
-            allocateAntsToEnemy(nextEnemyObjective);   //Allocate ants to the new food objective
+            allocateGroupToEnemy(nextEnemyObjective);   //Allocate ants to the new food objective
           }
 
           readEnemySet = false;  //Done processing food set
@@ -213,11 +261,11 @@ public class EnemyManager extends Thread
   }
 
   //Compares ants based on their proximity to a food site
-  private class AntComparator implements Comparator<Ant>
+  private class GroupComparator implements Comparator<AntGroup>
   {
     private int enemyX;
     private int enemyY;
-    private AntComparator(int enemyX, int enemyY)
+    private GroupComparator(int enemyX, int enemyY)
     {
       this.enemyX = enemyX;
       this.enemyY = enemyY;
@@ -228,16 +276,16 @@ public class EnemyManager extends Thread
     //It returns a negative value if ant1 is closer than ant2. Otherwise, a positive value is returned.
     //***********************************
     @Override
-    public int compare(Ant ant1, Ant ant2) {
+    public int compare(AntGroup group1, AntGroup group2) {
 
-      int ant1Distance = NestManager.calculateDistance(ant1.getAntData().gridX, ant1.getAntData().gridY, enemyX, enemyY);
-      int ant2Distance = NestManager.calculateDistance(ant2.getAntData().gridX, ant2.getAntData().gridY, enemyX, enemyY);
+      int group1Distance = NestManager.calculateDistance(group1.getGroupLeader().getAntData().gridX, group1.getGroupLeader().getAntData().gridY, enemyX, enemyY);
+      int group2Distance = NestManager.calculateDistance(group2.getGroupLeader().getAntData().gridX, group2.getGroupLeader().getAntData().gridY, enemyX, enemyY);
 
-      if(ant1Distance < ant2Distance)
+      if(group1Distance < group2Distance)
       {
         return -1;
       }
-      else if(ant1Distance > ant2Distance)
+      else if(group1Distance > group2Distance)
       {
         return 1;
       }

@@ -53,20 +53,24 @@ public class Ant
   {
     if(this.antGroup != null && !this.antGroup.followOrdered) {
       //Verify antData from server matches old antData indicating that the last action was completed.
-      if (newData.myAction.type == this.antData.myAction.type) {
+      if (newData.myAction.type == this.antData.myAction.type || currentGoal == Goal.ATTACK) {
         //System.err.println("Ant: " + antData.toString() + "antData action= " + antData.myAction.type + " newData = " + newData.myAction.type);
         //System.err.println("\tDID NOT MISS A STEP!!!");
         this.antData = newData;
         completedLastAction = true;
-      } else {
-        //System.err.println("Ant: " + antData.toString() + "antData action= " + antData.myAction.type + " newData = " + newData.myAction.type);
-        //System.err.println("\tMISSED A STEP!!!");
-        //System.exit(3);
+      }
+      else
+      {
+        if(newData.myAction.type == AntAction.AntActionType.ATTACK)
+        {
+          this.antData.myAction.type = AntAction.AntActionType.STASIS;
+        }
         newData.myAction = this.antData.myAction;
         this.antData = newData;
         completedLastAction = false;
       }
     }
+
     else
     {
       this.antData = newData;
@@ -209,7 +213,7 @@ public class Ant
     if (distanceToPathStartX <= 1 && distanceToPathStartY <= 1)  //Ant is adjacent to path, start to follow it
     {
       setPath(pathToNest);
-      //foodObjective.unallocateAnt(this);  //Unallocate ant
+      //foodObjective.unallocateGroup(this);  //Unallocate ant
       foodObjective = null; //Reset food objective
     }
     else    //Follow path diffusion gradient
@@ -771,35 +775,35 @@ public class Ant
     {
       case NORTH:
         enemyGradientVal += mapManager.getEnemyProximityVal(x,y-1);
-        enemyGradientVal += mapManager.getEnemyProximityVal(x,y-29);
+        enemyGradientVal += mapManager.getEnemyProximityVal(x,y-2);
         break;
       case NORTHEAST:
         enemyGradientVal += mapManager.getEnemyProximityVal(x+1,y-1);
-        enemyGradientVal += mapManager.getEnemyProximityVal(x+29,y-29);
+        enemyGradientVal += mapManager.getEnemyProximityVal(x+2,y-2);
         break;
       case NORTHWEST:
         enemyGradientVal += mapManager.getEnemyProximityVal(x-1,y-1);
-        enemyGradientVal += mapManager.getEnemyProximityVal(x-29,y-29);
+        enemyGradientVal += mapManager.getEnemyProximityVal(x-2,y-2);
         break;
       case SOUTH:
         enemyGradientVal += mapManager.getEnemyProximityVal(x,y+1);
-        enemyGradientVal += mapManager.getEnemyProximityVal(x,y+29);
+        enemyGradientVal += mapManager.getEnemyProximityVal(x,y+2);
         break;
       case SOUTHEAST:
         enemyGradientVal += mapManager.getEnemyProximityVal(x+1,y+1);
-        enemyGradientVal += mapManager.getEnemyProximityVal(x+29,y+29);
+        enemyGradientVal += mapManager.getEnemyProximityVal(x+2,y+2);
         break;
       case SOUTHWEST:
         enemyGradientVal += mapManager.getEnemyProximityVal(x-1,y+1);
-        enemyGradientVal += mapManager.getEnemyProximityVal(x-29,y+29);
+        enemyGradientVal += mapManager.getEnemyProximityVal(x-2,y+2);
         break;
       case EAST:
         enemyGradientVal += mapManager.getEnemyProximityVal(x+1,y);
-        enemyGradientVal += mapManager.getEnemyProximityVal(x+29,y);
+        enemyGradientVal += mapManager.getEnemyProximityVal(x+2,y);
         break;
       case WEST:
         enemyGradientVal += mapManager.getEnemyProximityVal(x-1,y);
-        enemyGradientVal += mapManager.getEnemyProximityVal(x-29,y);
+        enemyGradientVal += mapManager.getEnemyProximityVal(x-2,y);
         break;
     }
     return enemyGradientVal/2;
@@ -923,85 +927,94 @@ public class Ant
 
     if(heading == Direction.NORTH || heading == Direction.NORTHEAST || heading == Direction.NORTHWEST)
     {
-      int enemyValNorth = getAverageEnemyGradientVal(x,y,Direction.NORTH);
-      if(enemyValNorth > bestValSoFar)
+      if(!mapManager.getOccupied(x,y-1))
       {
-        bestValSoFar = enemyValNorth;
-        bestDirection = Direction.NORTH;
+        int enemyValNorth = getAverageEnemyGradientVal(x,y,Direction.NORTH);
+        if(enemyValNorth > bestValSoFar)
+        {
+          bestValSoFar = enemyValNorth;
+          bestDirection = Direction.NORTH;
+        }
       }
     }
 
     if(heading == Direction.NORTH || heading == Direction.NORTHEAST || heading == Direction.EAST)
     {
-      int enemyValNE = getAverageEnemyGradientVal(x,y,Direction.NORTHEAST);
-      if(enemyValNE > bestValSoFar)
-      {
-        bestValSoFar = enemyValNE;
-        bestDirection = Direction.NORTHEAST;
+      if(!mapManager.getOccupied(x+1,y-1)) {
+        int enemyValNE = getAverageEnemyGradientVal(x, y, Direction.NORTHEAST);
+        if (enemyValNE > bestValSoFar) {
+          bestValSoFar = enemyValNE;
+          bestDirection = Direction.NORTHEAST;
+        }
       }
     }
 
     if(heading == Direction.NORTH || heading == Direction.NORTHWEST || heading == Direction.WEST)
     {
-      int enemyValNW = getAverageEnemyGradientVal(x,y,Direction.NORTHWEST);
-      if(enemyValNW > bestValSoFar)
-      {
-        bestValSoFar = enemyValNW;
-        bestDirection = Direction.NORTHWEST;
+      if(!mapManager.getOccupied(x-1,y-1)) {
+        int enemyValNW = getAverageEnemyGradientVal(x, y, Direction.NORTHWEST);
+        if (enemyValNW > bestValSoFar) {
+          bestValSoFar = enemyValNW;
+          bestDirection = Direction.NORTHWEST;
+        }
       }
     }
 
     if(heading == Direction.SOUTH || heading == Direction.SOUTHEAST || heading == Direction.SOUTHWEST)
     {
-      int enemyValSouth = getAverageEnemyGradientVal(x,y,Direction.SOUTH);
-      if(enemyValSouth > bestValSoFar)
-      {
-        bestValSoFar = enemyValSouth;
-        bestDirection = Direction.SOUTH;
+      if(!mapManager.getOccupied(x,y+1)) {
+        int enemyValSouth = getAverageEnemyGradientVal(x, y, Direction.SOUTH);
+        if (enemyValSouth > bestValSoFar) {
+          bestValSoFar = enemyValSouth;
+          bestDirection = Direction.SOUTH;
+        }
       }
     }
 
     if(heading == Direction.SOUTH || heading == Direction.SOUTHEAST || heading == Direction.EAST)
     {
-      int enemyValSE = getAverageEnemyGradientVal(x,y,Direction.SOUTHEAST);
-      if(enemyValSE > bestValSoFar)
-      {
-        bestValSoFar = enemyValSE;
-        bestDirection = Direction.SOUTHEAST;
+      if(!mapManager.getOccupied(x+1,y+1)) {
+        int enemyValSE = getAverageEnemyGradientVal(x, y, Direction.SOUTHEAST);
+        if (enemyValSE > bestValSoFar) {
+          bestValSoFar = enemyValSE;
+          bestDirection = Direction.SOUTHEAST;
+        }
       }
     }
 
     if(heading == Direction.SOUTH || heading == Direction.SOUTHWEST || heading == Direction.WEST)
     {
-      int enemyValSW = getAverageEnemyGradientVal(x,y,Direction.SOUTHWEST);
-      if(enemyValSW > bestValSoFar)
-      {
-        bestValSoFar = enemyValSW;
-        bestDirection = Direction.SOUTHWEST;
+      if(!mapManager.getOccupied(x-1,y+1)) {
+        int enemyValSW = getAverageEnemyGradientVal(x, y, Direction.SOUTHWEST);
+        if (enemyValSW > bestValSoFar) {
+          bestValSoFar = enemyValSW;
+          bestDirection = Direction.SOUTHWEST;
+        }
       }
     }
 
     if(heading == Direction.EAST || heading == Direction.NORTHEAST || heading == Direction.SOUTHEAST)
     {
-      int enemyValEast = getAverageEnemyGradientVal(x,y,Direction.EAST);
-      if(enemyValEast > bestValSoFar)
-      {
-        bestValSoFar = enemyValEast;
-        bestDirection = Direction.EAST;
+      if(!mapManager.getOccupied(x+1,y)) {
+        int enemyValEast = getAverageEnemyGradientVal(x, y, Direction.EAST);
+        if (enemyValEast > bestValSoFar) {
+          bestValSoFar = enemyValEast;
+          bestDirection = Direction.EAST;
+        }
       }
     }
 
     if(heading == Direction.WEST || heading == Direction.NORTHWEST || heading == Direction.NORTHEAST)
     {
-      int enemyValWest = getAverageEnemyGradientVal(x,y,Direction.WEST);
-      if(enemyValWest > bestValSoFar)
-      {
-        bestValSoFar = enemyValWest;
-        bestDirection = Direction.WEST;
+      if(!mapManager.getOccupied(x-1,y)) {
+        int enemyValWest = getAverageEnemyGradientVal(x, y, Direction.WEST);
+        if (enemyValWest > bestValSoFar) {
+          bestDirection = Direction.WEST;
+        }
       }
     }
 
-    System.err.println("\tAnt: " + antData.toString() + " : bestEnemyValSoFar = " + bestValSoFar);
+    //System.err.println("\tAnt: " + antData.toString() + " : bestEnemyValSoFar = " + bestValSoFar);
 
     return bestDirection;
   }

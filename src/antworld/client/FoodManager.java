@@ -203,7 +203,7 @@ public class FoodManager extends Thread
     for (Integer id : groupMap.keySet())
     {
       AntGroup antGroup = groupMap.get(id);                                                 //Need to make sure that the ant is not underground either!
-      if(antGroup.getGroupGoal() == Goal.EXPLORE || antGroup.getGroupGoal() == Goal.GOTOFOODSITE) //If the ant was not already returning to the nest for a reason/ant is available to go collect food
+      if(antGroup.getGroupGoal() == Goal.EXPLORE || antGroup.getGroupGoal() == Goal.GOTOFOODSITE || antGroup.getGroupGoal() == Goal.ATTACK) //If the ant was not already returning to the nest for a reason/ant is available to go collect food
       {
         if(!antGroup.underground)
           groupQueue.add(antGroup);
@@ -215,7 +215,7 @@ public class FoodManager extends Thread
       AntGroup nextGroup = groupQueue.poll();  //Add ant to foodObjective
       AntData nextAntData = nextGroup.getGroupLeader().getAntData();
       int distanceToFood = NestManager.calculateDistance(foodX,foodY,nextAntData.gridX,nextAntData.gridY);
-      //System.err.println("nextAnt distance to food= " + distanceToFood + " : " + nextAntData.toString());
+      System.err.println("nextAnt distance to food= " + distanceToFood + " : " + nextAntData.toString());
       if (distanceToFood <= maxFoodResponseDistance)   //If an ant is within the range of the food objective
       {
         if(nextGroup.getGroupGoal() == Goal.GOTOFOODSITE && nextGroup.getGroupObjective() != foodObjective) //If the ant is already heading to a food site
@@ -243,7 +243,7 @@ public class FoodManager extends Thread
 
       if(groupsAllocated == groupsRequired)
       {
-        //System.err.println("ALLOCATED ENOUGH ANTS! groupsAllocated = " + groupsAllocated);
+        System.err.println("ALLOCATED ENOUGH ANTS! groupsAllocated = " + groupsAllocated);
         unprocessedFoodObjectives.remove(foodObjective);
       }
     }
@@ -409,6 +409,7 @@ public class FoodManager extends Thread
             for (int i = 0; i < array.length; i++)
             {
               System.err.println("Queue: \t " + array[i].getFoodData().toString());
+              System.err.println("Queue: \t\t @ (" + array[i].getObjectiveX() + "," + array[i].getObjectiveY() + ")");
             }
 
             FoodObjective nextFoodObjective = unprocessedFoodObjectives.peek(); //Peek instead of poll in case the food objective can't be processed

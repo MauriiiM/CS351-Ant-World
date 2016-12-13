@@ -1,6 +1,7 @@
 package antworld.client;
 
 import antworld.common.AntData;
+import antworld.common.Direction;
 
 /**
  * An enemy objective has an enemy ant that has been targeted to fight
@@ -11,8 +12,10 @@ public class EnemyObjective extends Objective
   private AntData enemyData;
   private int enemyID;
   private int enemyHealth;
+  private Direction enemyHeading;
   private boolean targeted = false; //True if there is an ant that is assigned to go attack this enemy
-  private Ant allocatedAnt;
+  private AntGroup allocatedGroup;
+  private boolean stillVisible = true;
 
   public EnemyObjective(AntData enemyAnt)
   {
@@ -21,6 +24,17 @@ public class EnemyObjective extends Objective
     this.enemyID = enemyAnt.id;
     this.enemyHealth = enemyAnt.health;
     this.enemyData = enemyAnt;
+    this.enemyHeading = null;
+  }
+
+  public boolean isStillVisible()
+  {
+    return stillVisible;
+  }
+
+  public void setStillVisible(boolean state)
+  {
+    stillVisible = state;
   }
 
   public int getEnemyID()
@@ -45,7 +59,8 @@ public class EnemyObjective extends Objective
 
   public void updateEnemyData(AntData newEnemyData)
   {
-    System.err.println("updatingEnemyData: " + newEnemyData.toString() + " : isAlive = " + newEnemyData.alive);
+    //System.err.println("updatingEnemyData: " + newEnemyData.toString() + " : isAlive = " + newEnemyData.alive);
+
     objectiveX = newEnemyData.gridX;
     objectiveY = newEnemyData.gridY;
     enemyHealth = newEnemyData.health;
@@ -54,22 +69,28 @@ public class EnemyObjective extends Objective
     if(enemyHealth <= 0)
     {
       System.err.println("KILLED AN ENEMY!");
+      //allocatedGroup.setGroupObjective(null);
+      allocatedGroup.setGroupGoal(Goal.EXPLORE);
+      targeted = false;
       completed = true;
     }
   }
 
-  public void unallocateAnt()
+  public void unallocateGroup()
   {
     //Might need to give the ant a new objective or goal or something??
-    allocatedAnt = null;
+    if(allocatedGroup != null)
+    {
+      allocatedGroup.setGroupGoal(Goal.EXPLORE);
+    }
+    allocatedGroup = null;
     targeted = false;
   }
 
-  public void allocateAnt(Ant ant)
+  public void allocateGroup(AntGroup group)
   {
-    allocatedAnt = ant;
-    ant.setCurrentObjective(this);
+    allocatedGroup = group;
+    group.setGroupObjective(this);
     targeted = true;
   }
-
 }
