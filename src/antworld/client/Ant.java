@@ -315,6 +315,10 @@ public class Ant
 
   private void pickUpFood(AntAction action)
   {
+    if(!(currentObjective instanceof FoodObjective))
+    {
+      return;
+    }
     FoodObjective foodObjective = (FoodObjective) currentObjective;
     int foodLeft = foodObjective.getFoodLeft();
 

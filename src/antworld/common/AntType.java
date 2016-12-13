@@ -87,17 +87,9 @@ public enum AntType
    * outside the nest.
    */
   public double getAttritionDamageProbability() {return 0.0002;}
-
-  public int getBaseMovementTicksPerCell()
-  {
-    return 2;
-  }  //default 2
+  public int getBaseMovementTicksPerCell() {return 2;}  //default 2
   public int getUpHillMultiplier() {return 5;}
-
-  public int getHalfEncumbranceMultiplier()
-  {
-    return 2;
-  }   //default 2
+  public int getHalfEncumbranceMultiplier() {return 2;}   //default 2
   
   public int getVisionRadius() {return 30;}
   public int getCarryCapacity() {return 25;}

@@ -11,12 +11,12 @@ public class Client
 {
   private static final boolean DEBUG = true;
   private final String mapFilePath = "resources/AntTestWorldBattle.png"; //resources/AntTestWorldDiffusion.png
-  private final TeamNameEnum myTeam;
+  final TeamNameEnum myTeam;
   private static final long password = 962740848319L;//Each team has been assigned a random password.
   private ObjectInputStream inputStream = null;
   private ObjectOutputStream outputStream = null;
   private boolean isConnected = false;
-  private NestNameEnum myNestName = null;
+  NestNameEnum myNestName = null;
   private Socket clientSocket;
   private NestManager nestManager;
 

@@ -6,6 +6,7 @@ import antworld.client.navigation.PathFinder;
 import antworld.common.AntData;
 import antworld.common.CommData;
 import antworld.common.FoodData;
+import antworld.common.*;
 import antworld.server.Cell;
 
 import java.util.ArrayList;
@@ -13,17 +14,15 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 
+import static antworld.common.FoodType.MEAT;
+import static antworld.common.FoodType.NECTAR;
+
 /**
  * Manages the ant nest and is the point of contact between the client and the AI
  * Created by John on 12/3/2016.
  */
 public class NestManager
 {
-  static String NEST_NAME;
-  static int NESTX;
-  static int NESTY;
-  static PathFinder pathFinder;
-
   private Client client;
   private CommData commData;
   private final String mapFilePath; //"resources/AntTestWorldDiffusion.png"
@@ -52,18 +51,6 @@ public class NestManager
     Ant.pathFinder = pathFinder;
     AntGroup.mapManager = mapManager;
     AntGroup.pathFinder = pathFinder;
-    AntGroup.foodManager = foodManager;
-    AntGroup.nestManager = this;
-  }
-
-  synchronized CommData getCommData()
-  {
-    return commData;
-  }
-
-  synchronized void setCommData(CommData newData)
-  {
-    commData = newData;
   }
 
   /**
@@ -90,9 +77,27 @@ public class NestManager
     LinkedList<Coordinate> objectLocations = new LinkedList<>(); //Does this need to be volatile?
     for (AntData antData : antList)
     {
-      nextAnt = antMap.get(antData.id);
-      nextAnt.setAntData(antData);
-      objectLocations.add(new Coordinate(antData.gridX, antData.gridY));
+      if(antMap.containsKey(antData.id))
+      {
+        nextAnt = antMap.get(antData.id);
+        nextAnt.setAntData(antData);
+        objectLocations.add(new Coordinate(antData.gridX, antData.gridY));
+      }
+      else
+      {
+        Ant newAnt = new Ant(antData);
+        antMap.put(antData.id,newAnt);
+        int groupCount = groupMap.size();
+        if(groupMap.get(groupCount-1).isFull())
+        {
+          AntGroup newGroup = new AntGroup(groupCount,newAnt);  //Create the first group
+          groupMap.put(groupCount,newGroup);    //Add it to the group map
+        }
+        else
+        {
+          groupMap.get(groupCount-1).addAntToGroup(newAnt);
+        }
+      }
     }
     for (FoodData foodData : foodSet)
     {
@@ -167,6 +172,29 @@ public class NestManager
       mapManager.updateCellExploration(nextGroup.getGroupLeader().getAntData().gridX,nextGroup.getGroupLeader().getAntData().gridY);
       //todo check attrition damage
       nextGroup.chooseGroupActions();
+    }
+
+    int[] foodStockPile = commData.foodStockPile;
+
+    for(int i=0;i<foodStockPile.length;i++)
+    {
+      System.out.println("stockPile[" + i + "]= " + foodStockPile[i]);
+    }
+
+    if(foodStockPile[MEAT.ordinal()] >= 20)
+    {
+      AntData newAnt1 = new AntData(Constants.UNKNOWN_ANT_ID,AntType.ATTACK,client.myNestName,client.myTeam);
+      AntData newAnt2 = new AntData(Constants.UNKNOWN_ANT_ID,AntType.ATTACK,client.myNestName,client.myTeam);
+      commData.myAntList.add(newAnt1);
+      commData.myAntList.add(newAnt2);
+    }
+
+    if(foodStockPile[NECTAR.ordinal()] >= 20)
+    {
+      AntData newAnt1 = new AntData(Constants.UNKNOWN_ANT_ID,AntType.SPEED,client.myNestName,client.myTeam);
+      AntData newAnt2 = new AntData(Constants.UNKNOWN_ANT_ID,AntType.SPEED,client.myNestName,client.myTeam);
+      commData.myAntList.add(newAnt1);
+      commData.myAntList.add(newAnt2);
     }
 
     /*
