@@ -56,7 +56,6 @@ public class FoodManager extends Thread
   //Reads a foodSet and updates the manager's own set of foodsites
   private void readFoodSet(FoodData[] foodArray)
   {
-    //System.err.println("readingFoodSet()....... objectiveSize = " + foodObjectives.size() + " : queueSize" + unprocessedFoodObjectives.size());
     FoodData nextServerSite;
     int serverSiteX;
     int serverSiteY;
@@ -86,7 +85,6 @@ public class FoodManager extends Thread
         {
           nextStoredSite = iterator.next();
           nextStoredSiteData = nextStoredSite.getFoodData();
-          //System.err.println("nextFoodObjective = " + nextStoredSiteData.toString() + " : antsAllocated = " + nextStoredSite.getAllocatedAnts().size() + " : " + nextStoredSite.getFoodLeft());
           storedSiteX = nextStoredSiteData.gridX;
           storedSiteY = nextStoredSiteData.gridY;
 
@@ -96,9 +94,7 @@ public class FoodManager extends Thread
 
             if (nextStoredSite.getAllocatedAnts().size() == 0)
             {
-              //System.err.println("ABOUT TO REMOVE OBJECTIVE WITH ANTS STILL ALLOCATED!" + nextStoredSiteData.toString());
               //System.exit(3);
-              System.err.println("REMOVED FOODSITE: foodData=" + nextStoredSiteData.toString());
               iterator.remove();
               mapManager.removeFoodProximityGradient(storedSiteX, storedSiteY);
               Coordinate pathToNestStart = nextStoredSite.getPathToNest().getPathStart();
@@ -112,7 +108,6 @@ public class FoodManager extends Thread
             int groupsRequired = groupsRequiredForFoodSite(storedSiteFoodLeft);
             if(groupsRequired > nextStoredSite.getAllocatedAnts().size() && !unprocessedFoodObjectives.contains(nextStoredSite))
             {
-              //System.err.println("Food Site needs attention! " + nextStoredSiteData.toString());
               unprocessedFoodObjectives.add(nextStoredSite);
             }
           }
@@ -193,12 +188,10 @@ public class FoodManager extends Thread
     int foodX = foodObjective.getObjectiveX();
     int foodY = foodObjective.getObjectiveY();
     int groupsRequired = groupsRequiredForFoodSite(foodObjective.getFoodLeft());
-    System.err.println("Groups required for food site = " + groupsRequired);
     int groupsAllocated = foodObjective.getAllocatedAnts().size();
     GroupComparator comparator = new GroupComparator(foodX, foodY);
     PriorityQueue<AntGroup> groupQueue = new PriorityQueue<>(comparator);
     int maxFoodResponseDistance = NestManager.calculateDistance(foodX,foodY,NestManager.NESTX,NestManager.NESTY) + FOODRESPONSEBUFFER;
-    //System.err.println("maxFoodResponse to : " + foodData.toString() + " : = " + maxFoodResponseDistance);
 
     for (Integer id : groupMap.keySet())
     {
@@ -215,7 +208,6 @@ public class FoodManager extends Thread
       AntGroup nextGroup = groupQueue.poll();  //Add ant to foodObjective
       AntData nextAntData = nextGroup.getGroupLeader().getAntData();
       int distanceToFood = NestManager.calculateDistance(foodX,foodY,nextAntData.gridX,nextAntData.gridY);
-      System.err.println("nextAnt distance to food= " + distanceToFood + " : " + nextAntData.toString());
       if (distanceToFood <= maxFoodResponseDistance)   //If an ant is within the range of the food objective
       {
         if(nextGroup.getGroupGoal() == Goal.GOTOFOODSITE && nextGroup.getGroupObjective() != foodObjective) //If the ant is already heading to a food site
@@ -229,7 +221,6 @@ public class FoodManager extends Thread
             if(!unprocessedFoodObjectives.contains(previousObjective))  //Add the previous objective if it's not already in the queue
             {
               unprocessedFoodObjectives.add(previousObjective);   //Add previous objective to priority queue so a new ant gets allocated to it later
-              //System.err.println("added previous objective: queue size = " + unprocessedFoodObjectives.size());
             }
             groupsAllocated ++;
           }
@@ -243,7 +234,6 @@ public class FoodManager extends Thread
 
       if(groupsAllocated == groupsRequired)
       {
-        System.err.println("ALLOCATED ENOUGH ANTS! groupsAllocated = " + groupsAllocated);
         unprocessedFoodObjectives.remove(foodObjective);
       }
     }
@@ -255,7 +245,6 @@ public class FoodManager extends Thread
     foodObjective.allocateGroup(group);      //Allocate ant to new food objective
     AntData antData = group.getGroupLeader().getAntData();
     int distanceToFoodSite = NestManager.calculateDistance(antData.gridX,antData.gridY,foodX,foodY);
-    System.err.println("Allocating group: " + group.ID + " : distanceToFoodSite = " + distanceToFoodSite);
     if(distanceToFoodSite >= FOODGRADIENTRADIUS-1)
     {
       group.setPath(generatePathToFood(group.getGroupLeader().getAntData(), foodData));
@@ -264,7 +253,6 @@ public class FoodManager extends Thread
     {
       group.endPath();
     }
-    System.err.println("ALLOCATING GROUP: " + group.ID + " to: " + foodData.toString());
   }
 
   /**
@@ -276,8 +264,6 @@ public class FoodManager extends Thread
   //Compares two food sites and returns the most favorable one for an ant to pursue
   private FoodObjective compareFoodSites(AntGroup group, FoodObjective currentObjective, FoodObjective otherObjective)
   {
-    //System.err.println("COMPARING FOOD SITES... current = " + currentObjective.getFoodData().toString() + " : other = " + otherObjective.getFoodData().toString());
-
     if (currentObjective != null && otherObjective != null)
     {
       int groupX = group.getGroupLeader().getAntData().gridX;
@@ -288,7 +274,6 @@ public class FoodManager extends Thread
       int otherY = otherObjective.getObjectiveY();
       int currentDistance = NestManager.calculateDistance(groupX,groupY,currentX,currentY);
       int otherDistance = NestManager.calculateDistance(groupX,groupY,otherX,otherY);
-      //System.err.println("\t Ant:" + ant.getAntData().toString() + " : currentDistance= " + currentDistance + " otherDistance = " + otherDistance);
 
       if (currentDistance <= otherDistance)  //If the current food objective is just as good or better, maintain current objective
       {
@@ -322,10 +307,6 @@ public class FoodManager extends Thread
   //Generates a path to a food site for an ant to follow
   private Path generatePathToFood(AntData ant, FoodData food)
   {
-
-    //System.err.println("GeneratingAntPath()....");
-    //System.err.println("\t antData= " + ant.toString());
-
     int antX = ant.gridX;
     int antY = ant.gridY;
     int foodX = food.gridX;
@@ -358,9 +339,6 @@ public class FoodManager extends Thread
       {
         targetY = foodY - (int) targetDeltaY;
       }
-
-      //System.err.println("deltaY = " + deltaY + " : deltaX= " + deltaX);
-      //System.err.println("target deltaY = " + targetDeltaY + " : target deltaX= " + targetDeltaX + " : angleToFood = " + angleToFood);
     }
     else if (deltaX == 0)
     {
@@ -406,11 +384,6 @@ public class FoodManager extends Thread
 
             FoodObjective[] array = new FoodObjective[unprocessedFoodObjectives.size()];
             unprocessedFoodObjectives.toArray(array);
-            for (int i = 0; i < array.length; i++)
-            {
-              System.err.println("Queue: \t " + array[i].getFoodData().toString());
-              System.err.println("Queue: \t\t @ (" + array[i].getObjectiveX() + "," + array[i].getObjectiveY() + ")");
-            }
 
             FoodObjective nextFoodObjective = unprocessedFoodObjectives.peek(); //Peek instead of poll in case the food objective can't be processed
             allocateGroupsToFoodSite(nextFoodObjective);   //Allocate ants to the new food objective

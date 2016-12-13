@@ -3,7 +3,6 @@ package antworld.client;
 import antworld.client.navigation.Coordinate;
 import antworld.client.navigation.MapManager;
 import antworld.client.navigation.PathFinder;
-import antworld.common.AntAction;
 import antworld.common.AntData;
 import antworld.common.CommData;
 import antworld.common.FoodData;
@@ -20,12 +19,15 @@ import java.util.LinkedList;
  */
 public class NestManager
 {
+  static String NEST_NAME;
+  static int NESTX;
+  static int NESTY;
+  static PathFinder pathFinder;
+
   private Client client;
-  public static int NESTX;
-  public static int NESTY;
+  private CommData commData;
   private final String mapFilePath; //"resources/AntTestWorldDiffusion.png"
   private MapManager mapManager;
-  public static PathFinder pathFinder;
   private FoodManager foodManager;
   private EnemyManager enemyManager;
   private HashMap<Integer, Ant> antMap;  //Must use ID as the key because antData is constantly changing
@@ -33,8 +35,7 @@ public class NestManager
   private Ant ant;
   private Cell[][] geoMap;
 
-
-  public NestManager(Client client, String mapFilePath)
+  NestManager(Client client, String mapFilePath)
   {
     this.client = client;
     this.mapFilePath = mapFilePath;
@@ -51,6 +52,18 @@ public class NestManager
     Ant.pathFinder = pathFinder;
     AntGroup.mapManager = mapManager;
     AntGroup.pathFinder = pathFinder;
+    AntGroup.foodManager = foodManager;
+    AntGroup.nestManager = this;
+  }
+
+  synchronized CommData getCommData()
+  {
+    return commData;
+  }
+
+  synchronized void setCommData(CommData newData)
+  {
+    commData = newData;
   }
 
   /**
@@ -101,7 +114,6 @@ public class NestManager
       antMap.put(ant.id, newAnt);
 
       Integer groupCount = groupMap.size();
-      System.err.println("Initializing antMap: groupCount = " + groupCount);
       if(groupCount==0) //If a group has not been initialized yet
       {
         AntGroup newGroup = new AntGroup(groupCount,newAnt);  //Create the first group
@@ -174,23 +186,18 @@ public class NestManager
       Goal currentGoal = antMap.get(id).getCurrentGoal();
       if(currentGoal == Goal.EXPLORE)
       {
-        System.err.println("Ant: " + nextAntData.toString() + " : GOAL= EXPLORE");
       }
       else if(currentGoal == Goal.GOTOFOODSITE)
       {
-        System.err.println("Ant: " + nextAntData.toString() + " : GOAL= GOTOFOODSITE");
       }
       else if(currentGoal == Goal.RETURNTONEST)
       {
-        System.err.println("Ant: " + nextAntData.toString() + " : GOAL= RETURNTONEST");
       }
 
       AntAction action = chooseAction(commData, nextAntData);
       nextAntData.myAction = action;
     }
     */
-
-    System.err.println("GAME TICK = " + commData.gameTick);
 
     //Used for testing food gradient write/erase
     /*
@@ -210,8 +217,6 @@ public class NestManager
 
     if (!this.ant.completedLastAction) //If it did not complete it's last action, resend
     {
-      System.err.println("resending data for: ant: " + this.ant.getAntData().toString());
-      System.err.println("\treturning: " + this.ant.getAntData().myAction);
       return this.ant.getAntData().myAction;
     }
 

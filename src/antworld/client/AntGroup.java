@@ -19,15 +19,21 @@ public class AntGroup
   static PathFinder pathFinder;
   static int centerX, centerY;
   static MapManager mapManager;
+  static NestManager nestManager;
+  static FoodManager foodManager;
+  private static int antsCarryingWater = 0;
+
   Direction lastDir;
   boolean hasPath = false;
   boolean followFoodGradient = false;
   boolean followOrdered = true;   //True initially, follow leader in orderly fasion until an objective is reached
   boolean followDisorded = false; //If an objective has been reach and completed, follow leader by dead reckoning relative direction
   Path path;
+  Path waterPath;
   int pathStepCount;
-  private boolean randomWalk = false;
+  int h2oPathStepCount;
   boolean completedLastAction = false;
+  private boolean randomWalk = false;
   private boolean checkAttritionDamage = false;
   private int randomSteps = 0;
   private boolean groupStuck = false;
@@ -54,7 +60,6 @@ public class AntGroup
     groupLeader.setAntGroup(this);
     group.add(groupLeader);
     lastLeaderPosition = new Coordinate(groupLeader.getAntData().gridX, groupLeader.getAntData().gridY);
-    System.err.println("Group:" + ID + " created: GroupLeader = " + groupLeader.getAntData().toString());
   }
 
   public Ant getGroupLeader()
@@ -77,10 +82,9 @@ public class AntGroup
   public void setGroupGoal(Goal newGoal)
   {
     groupGoal = newGoal;
-    for(int i=0; i < group.size();i++)
+    for (int i = 0; i < group.size(); i++)
     {
       group.get(i).setCurrentGoal(groupGoal);
-      System.err.println("SET A NEW GOAL: TO ANT " + group.get(i).getAntData().toString());
     }
   }
 
@@ -92,7 +96,7 @@ public class AntGroup
   public void setGroupObjective(Objective newObjective)
   {
     groupObjective = newObjective;
-    for(int i=0; i < group.size();i++)
+    for (int i = 0; i < group.size(); i++)
     {
       group.get(i).setCurrentObjective(groupObjective);
     }
@@ -113,7 +117,6 @@ public class AntGroup
   {
     if (!fullGroup)
     {
-      System.err.println("Group " + ID + " added: " + ant.getAntData().toString());
       group.add(ant);
       ant.setAntGroup(this);
       if (group.size() == ANTS_PER_GROUP)
@@ -226,7 +229,6 @@ public class AntGroup
 
   public void chooseGroupActions()
   {
-
     if (resetGroup())
     {
       followOrdered = true;
@@ -255,7 +257,7 @@ public class AntGroup
         groupStuck = true;
       }
 
-      if(ticksStuckCount > 60)
+      if (ticksStuckCount > 60)
       {
         System.err.println("HAIL MARY: RETURN TO NEST");
         setGroupGoal(Goal.RETURNTONEST);
@@ -263,9 +265,8 @@ public class AntGroup
 
       if (groupStuck)
       {
-        System.err.println("GROUP " + ID + " STUCK!!!!!!!!!!");
+//        System.err.println("GROUP " + ID + " STUCK!!!!!!!!!!");
         Direction newDirection = findUnoccupiedDirection(groupLeaderX, groupLeaderY);
-        //System.err.println("\ttry direction:  " + newDirection.toString());
         if (groupLeader.getNextAction() != null)
         {
           groupLeader.getNextAction().direction = newDirection;
@@ -290,7 +291,6 @@ public class AntGroup
   //Used when ants are choosing their own actions to obtain a nearby objective
   public void chooseAntActions()
   {
-    //System.err.println("Group: " + ID + " ChooseAntActions..................Goal = " + groupGoal.toString());
 
     updateLeaderPosition();
 
@@ -298,13 +298,12 @@ public class AntGroup
     {
       Ant nextAnt = group.get(i);
       AntData nextAntData = nextAnt.getAntData();
-      System.err.println("examining: " + nextAntData.toString() + ": completedLastAction= " + nextAnt.completedLastAction);
       if (nextAnt.completedLastAction)
       {
         nextAntData.myAction = nextAnt.chooseAntAction();
-        System.err.println("\t\t CHOSE ACTION: " + nextAntData.toString());
-        System.err.println("\t\t goal=: " + nextAnt.getCurrentGoal().toString() + " HasPath= " + nextAnt.hasPath + " pathstepCount= " + nextAnt.pathStepCount);
-        System.err.println("\t\t following gradient = " + nextAnt.followFoodGradient);
+//        System.err.println("\t\t CHOSE ACTION: " + nextAntData.toString());
+//        System.err.println("\t\t goal=: " + nextAnt.getCurrentGoal().toString() + " HasPath= " + nextAnt.hasPath + " pathstepCount= " + nextAnt.pathStepCount);
+//        System.err.println("\t\t following gradient = " + nextAnt.followFoodGradient);
       }
     }
   }
@@ -313,7 +312,7 @@ public class AntGroup
   public void chooseAntOrders()
   {
 
-    System.err.println("Group: " + ID + " ChooseAntOrders..................Goal = " + groupGoal.toString());
+//    System.err.println("Group: " + ID + " ChooseAntOrders..................Goal = " + groupGoal.toString());
 
     updateLeaderPosition();
 
@@ -445,6 +444,8 @@ public class AntGroup
 
     if (goToNest(antData, antAction)) return antAction;
 
+    if (hasWaterPath(antData, antAction)) return antAction;
+
     if (goToEnemyAnt(antData, antAction)) return antAction;
 
     if (goToFood(antData, antAction)) return antAction;
@@ -458,7 +459,7 @@ public class AntGroup
 
   private void freeAntsFromOrders(Goal goal, Objective objective)
   {
-    System.err.println("FREE ANTS FROM ORDERS");
+//    System.err.println("FREE ANTS FROM ORDERS");
     /*
     for(int i= 0; i<group.size();i++)
     {
@@ -468,6 +469,11 @@ public class AntGroup
     }
     */
     followOrdered = false;
+  }
+
+  void updateAntsCarryingWater(int amountCarrying)
+  {
+    antsCarryingWater += amountCarrying;
   }
 
   //only called when ant's in the nest and will be true
@@ -508,12 +514,35 @@ public class AntGroup
         return healSelf(action);
       }
 
+//      if (nestManager.getCommData().foodStockPile[0] < (nestManager.getCommData().myAntList.size() * 2) && antsCarryingWater <  nestManager.getCommData().myAntList.size() * 2)//if nest needs water
+//      {
+//        System.err.println("NEED WATERRRRRRRRRRRRRRRR");
+//        if (!hasPath)
+//        {
+//          System.err.println("DOESNT HAVE PATH");
+//          if (waterPath == null) //this will set the local water path
+//          {
+//            waterPath = pathFinder.findPath(NearestWaterPaths.valueOf(NestManager.NEST_NAME).waterX(), NearestWaterPaths.valueOf(NestManager.NEST_NAME).waterY(), centerX, centerY);
+//            h2oPathStepCount = waterPath.getPath().size() - 1;
+//          }
+//          path = waterPath;
+//          antsCarryingWater += ant.antType.getCarryCapacity();
+//          hasPath = true;
+//          groupGoal = Goal.COLLECT_WATER;
+//          action.type = AntAction.AntActionType.EXIT_NEST;
+//          action.x = path.getPath().get(h2oPathStepCount).getX();
+//          action.y = path.getPath().get(h2oPathStepCount).getY();
+//          h2oPathStepCount--;
+//          return true;
+//        }
+//      }
+
       int exitX = centerX - (Constants.NEST_RADIUS - 1) + random.nextInt(2 * (Constants.NEST_RADIUS - 1));
       int deltaX = Math.abs(centerX - exitX);
       int exitY;
       int deltaY = 20 - deltaX;
-      System.err.println("\t Center : (" + centerX + "," + centerY + ")");
-      System.err.println("\t Delta X=  " + deltaX);
+//      System.err.println("\t Center : (" + centerX + "," + centerY + ")");
+//      System.err.println("\t Delta X=  " + deltaX);
       if (random.nextBoolean())
       {
         exitY = centerY + deltaY;
@@ -526,20 +555,19 @@ public class AntGroup
       action.type = AntAction.AntActionType.EXIT_NEST;
       action.x = exitX;
       action.y = exitY;
-      System.err.println("\t\t Exit : (" + exitX + "," + exitY + ")");
+//      System.err.println("\t\t Exit : (" + exitX + "," + exitY + ")");
       return true;
     }
     return false;
   }
 
-  /**
-   * @todo currently going all the way to center of nest, what's the math to go just to the nest?
-   */
   boolean goToNest(AntData ant, AntAction action)
   {
     if (groupGoal == Goal.RETURNTONEST)
     {
       System.err.println("GROUP TRYING TO RETURN TO NEST");
+
+//      if (path == waterPath) pathStepCount += group.size();
       if (hasPath && pathStepCount < path.getPath().size() - 1)
       {
         int deltaX = Math.abs(centerX - ant.gridX);
@@ -626,11 +654,42 @@ public class AntGroup
 
     if (ant == groupLeader.getAntData())
     {
-      System.err.println("Group: " + ID + " : Ant: " + ant.toString() + " : PICKING UP FOOD : foodLeft = " + foodObjective.getFoodLeft());
+//      System.err.println("Group: " + ID + " : Ant: " + ant.toString() + " : PICKING UP FOOD : foodLeft = " + foodObjective.getFoodLeft());
       setGroupGoal(Goal.RETURNTONEST);
-
     }
+  }
 
+  boolean hasWaterPath(AntData ant, AntAction action)
+  {
+    if (groupGoal == Goal.COLLECT_WATER)
+    {
+      action.type = AntAction.AntActionType.MOVE;
+      if (path == waterPath && ant.carryUnits == 0)//going for water
+      {
+        action.direction = Directions.xyCoordinateToDirection(path.getPath().get(h2oPathStepCount).getX(), path.getPath().get(h2oPathStepCount).getY(), ant.gridX, ant.gridY);
+        System.err.println("ant @(" + ant.gridX + ", " + ant.gridY + ")" + "\npath @(" + path.getPath().get(h2oPathStepCount).getX() + ", " + path.getPath().get(h2oPathStepCount).getY() + ")");
+        if (h2oPathStepCount == 0)
+        {
+          System.err.println("PICKUP WATER");
+          groupGoal = Goal.RETURNTONEST;
+          action.type = AntAction.AntActionType.PICKUP;
+          action.quantity = ant.antType.getCarryCapacity() - 1;
+          return true;
+        }
+        h2oPathStepCount--;
+        //safe check to see if ant actually moved and is where he's supposed to be on path
+        if (ant.gridX == path.getPath().get(h2oPathStepCount).getX() && ant.gridY == path.getPath().get(h2oPathStepCount).getY())
+          h2oPathStepCount--;
+      }
+      else if (hasPath && pathStepCount == 3 * path.getPath().size() / 4) //Ant has finished following the path
+      {
+        endPath();  //Get rid of the old path
+        followFoodGradient = true;
+      }
+      //      action.quantity = ant.antType.getCarryCapacity() - 1;
+      return true;
+    }
+    return false;
   }
 
   //Samples two points in the given direction and returns the average exploration value
@@ -960,7 +1019,6 @@ public class AntGroup
       }
     }
 
-    //System.err.println("\tAnt: " + antData.toString() + " : bestValSoFar = " + bestValSoFar);
     if (bestValSoFar == 0) //If no direction is good, get a general heading and go in that direction
     {
       //System.err.println("DEAD RECKONING...");
@@ -1223,10 +1281,10 @@ public class AntGroup
 
     if (heading == Direction.NORTH || heading == Direction.NORTHEAST || heading == Direction.NORTHWEST)
     {
-      if(!mapManager.getOccupied(x,y-1))
+      if (!mapManager.getOccupied(x, y - 1))
       {
-        int enemyValNorth = getAverageEnemyGradientVal(x,y,Direction.NORTH);
-        if(enemyValNorth > bestValSoFar)
+        int enemyValNorth = getAverageEnemyGradientVal(x, y, Direction.NORTH);
+        if (enemyValNorth > bestValSoFar)
         {
           bestValSoFar = enemyValNorth;
           bestDirection = Direction.NORTH;
@@ -1236,9 +1294,11 @@ public class AntGroup
 
     if (heading == Direction.NORTH || heading == Direction.NORTHEAST || heading == Direction.EAST)
     {
-      if(!mapManager.getOccupied(x+1,y-1)) {
+      if (!mapManager.getOccupied(x + 1, y - 1))
+      {
         int enemyValNE = getAverageEnemyGradientVal(x, y, Direction.NORTHEAST);
-        if (enemyValNE > bestValSoFar) {
+        if (enemyValNE > bestValSoFar)
+        {
           bestValSoFar = enemyValNE;
           bestDirection = Direction.NORTHEAST;
         }
@@ -1247,9 +1307,11 @@ public class AntGroup
 
     if (heading == Direction.NORTH || heading == Direction.NORTHWEST || heading == Direction.WEST)
     {
-      if(!mapManager.getOccupied(x-1,y-1)) {
+      if (!mapManager.getOccupied(x - 1, y - 1))
+      {
         int enemyValNW = getAverageEnemyGradientVal(x, y, Direction.NORTHWEST);
-        if (enemyValNW > bestValSoFar) {
+        if (enemyValNW > bestValSoFar)
+        {
           bestValSoFar = enemyValNW;
           bestDirection = Direction.NORTHWEST;
         }
@@ -1258,9 +1320,11 @@ public class AntGroup
 
     if (heading == Direction.SOUTH || heading == Direction.SOUTHEAST || heading == Direction.SOUTHWEST)
     {
-      if(!mapManager.getOccupied(x,y+1)) {
+      if (!mapManager.getOccupied(x, y + 1))
+      {
         int enemyValSouth = getAverageEnemyGradientVal(x, y, Direction.SOUTH);
-        if (enemyValSouth > bestValSoFar) {
+        if (enemyValSouth > bestValSoFar)
+        {
           bestValSoFar = enemyValSouth;
           bestDirection = Direction.SOUTH;
         }
@@ -1269,9 +1333,11 @@ public class AntGroup
 
     if (heading == Direction.SOUTH || heading == Direction.SOUTHEAST || heading == Direction.EAST)
     {
-      if(!mapManager.getOccupied(x+1,y+1)) {
+      if (!mapManager.getOccupied(x + 1, y + 1))
+      {
         int enemyValSE = getAverageEnemyGradientVal(x, y, Direction.SOUTHEAST);
-        if (enemyValSE > bestValSoFar) {
+        if (enemyValSE > bestValSoFar)
+        {
           bestValSoFar = enemyValSE;
           bestDirection = Direction.SOUTHEAST;
         }
@@ -1280,9 +1346,11 @@ public class AntGroup
 
     if (heading == Direction.SOUTH || heading == Direction.SOUTHWEST || heading == Direction.WEST)
     {
-      if(!mapManager.getOccupied(x-1,y+1)) {
+      if (!mapManager.getOccupied(x - 1, y + 1))
+      {
         int enemyValSW = getAverageEnemyGradientVal(x, y, Direction.SOUTHWEST);
-        if (enemyValSW > bestValSoFar) {
+        if (enemyValSW > bestValSoFar)
+        {
           bestValSoFar = enemyValSW;
           bestDirection = Direction.SOUTHWEST;
         }
@@ -1291,9 +1359,11 @@ public class AntGroup
 
     if (heading == Direction.EAST || heading == Direction.NORTHEAST || heading == Direction.SOUTHEAST)
     {
-      if(!mapManager.getOccupied(x+1,y)) {
+      if (!mapManager.getOccupied(x + 1, y))
+      {
         int enemyValEast = getAverageEnemyGradientVal(x, y, Direction.EAST);
-        if (enemyValEast > bestValSoFar) {
+        if (enemyValEast > bestValSoFar)
+        {
           bestValSoFar = enemyValEast;
           bestDirection = Direction.EAST;
         }
@@ -1302,16 +1372,15 @@ public class AntGroup
 
     if (heading == Direction.WEST || heading == Direction.NORTHWEST || heading == Direction.NORTHEAST)
     {
-      if(!mapManager.getOccupied(x-1,y)) {
+      if (!mapManager.getOccupied(x - 1, y))
+      {
         int enemyValWest = getAverageEnemyGradientVal(x, y, Direction.WEST);
-        if (enemyValWest > bestValSoFar) {
+        if (enemyValWest > bestValSoFar)
+        {
           bestDirection = Direction.WEST;
         }
       }
     }
-
-    //System.err.println("\tAnt: " + ant.toString() + " : bestEnemyValSoFar = " + bestValSoFar);
-
     return bestDirection;
   }
 
@@ -1341,7 +1410,6 @@ public class AntGroup
     action.direction = enemyDirection;
 
     EnemyObjective enemyObjective = (EnemyObjective) groupObjective;
-    System.err.println("Ant: " + ant.toString() + " : ATTACKING: " + enemyObjective.getEnemyData().toString());
   }
 
   boolean goToEnemyAnt(AntData ant, AntAction action)
@@ -1351,7 +1419,7 @@ public class AntGroup
       return false;
     }
 
-    System.err.println("GoToEnemy Ant: " + ant.toString());
+//    System.err.println("GoToEnemy Ant: " + ant.toString());
 
     int distanceToEnemyX = Math.abs(ant.gridX - groupObjective.getObjectiveX());
     int distanceToEnemyY = Math.abs(ant.gridY - groupObjective.getObjectiveY());
@@ -1359,7 +1427,7 @@ public class AntGroup
     if (distanceToEnemyX <= 5 && distanceToEnemyY <= 5)  //Ant is adjacent to food, pick it up
     {
       //attackEnemyAnt(ant,action);
-      freeAntsFromOrders(groupGoal,groupObjective);
+      freeAntsFromOrders(groupGoal, groupObjective);
       return true;
     }
     else    //Follow enemy diffusion gradient
@@ -1377,12 +1445,12 @@ public class AntGroup
     {
       return false;
     }
-    System.err.println("GoToFood Ant: " + ant.toString() + " hasPath = " + hasPath + " : followGradient= " + followFoodGradient);
+//    System.err.println("GoToFood Ant: " + ant.toString() + " hasPath = " + hasPath + " : followGradient= " + followFoodGradient);
     if (hasPath) //If the ant has a path, follow it
     {
       if (pathStepCount < path.getPath().size() - 1) //If the ant has not reached the end of the path
       {
-        System.err.println("Ant: " + ant.toString() + " FOLLOWING PATH");
+//        System.err.println("Ant: " + ant.toString() + " FOLLOWING PATH");
         action.type = AntAction.AntActionType.MOVE;
         action.direction = Directions.xyCoordinateToDirection(path.getPath().get(pathStepCount).getX(), path.getPath().get(pathStepCount).getY(), ant.gridX, ant.gridY);
         pathStepCount++;
@@ -1405,7 +1473,7 @@ public class AntGroup
       int distanceToFoodX = Math.abs(ant.gridX - groupObjective.getObjectiveX());
       int distanceToFoodY = Math.abs(ant.gridY - groupObjective.getObjectiveY());
 
-      System.err.println("Ant: " + ant.toString() + " FOLLOWING GRADIENT : distToFoodX = " + distanceToFoodX + " : distToFoodY = " + distanceToFoodY);
+//      System.err.println("Ant: " + ant.toString() + " FOLLOWING GRADIENT : distToFoodX = " + distanceToFoodX + " : distToFoodY = " + distanceToFoodY);
 
       if (distanceToFoodX <= 5 && distanceToFoodY <= 5)  //Ant is adjacent to food, pick it up
       {
@@ -1463,7 +1531,7 @@ public class AntGroup
     if (!randomWalk)
     {
       dir = getBestDirectionToExplore(ant.gridX, ant.gridY);
-      System.err.println("Group" + ID + " best direction to explore = " + dir.toString());
+//      System.err.println("Group" + ID + " best direction to explore = " + dir.toString());
     }
     else  //If randomly walking in a direction, keep going for 5 paces
     {

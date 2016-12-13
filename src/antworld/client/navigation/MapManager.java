@@ -301,7 +301,6 @@ public class MapManager
 
   public void removePathProximityGradient(int x, int y)
   {
-    System.err.println("ERASING PATH GRADIENT");
     eraseGradientFromMap(x, y, PATHSTARTRADIUS, GradientType.PATH);
   }
 
@@ -312,7 +311,6 @@ public class MapManager
 
   public void removeFoodProximityGradient(int foodX, int foodY)
   {
-    System.err.println("ERASING FOOD GRADIENT");
     eraseGradientFromMap(foodX, foodY, FOODRADIUS, GradientType.FOOD);
   }
 
@@ -503,7 +501,6 @@ public class MapManager
 
           if (nextX < 0 || nextX >= mapWidth || nextY < 0 || nextY >= mapHeight)
           {
-            //System.err.println("INDEX OUT OF BOUND!");
             continue;
           }
 
@@ -591,7 +588,6 @@ public class MapManager
 
           if (nextX < 0 || nextX >= mapWidth || nextY < 0 || nextY >= mapHeight)
           {
-            //System.err.println("INDEX OUT OF BOUND!");
             continue;
           }
 

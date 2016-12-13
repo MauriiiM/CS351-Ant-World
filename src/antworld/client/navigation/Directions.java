@@ -18,7 +18,6 @@ public class Directions
     if (nextX < antX && nextY > antY) return Direction.SOUTHWEST;
     if (nextX < antX && nextY == antY) return Direction.WEST;
     if (nextX < antX && nextY < antY) return Direction.NORTHWEST;
-    //System.err.println("NO DIRECTION!! nextX= " + nextX + " nextY= " + nextY + " antX=" + antX + " antY=" + antY);
     return null;
   }
 

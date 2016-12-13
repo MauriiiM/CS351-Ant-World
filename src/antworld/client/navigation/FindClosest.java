@@ -169,7 +169,6 @@ public class FindClosest
     }
     catch (IOException e)
     {
-      System.err.println("Cannot Open image: " + imagePath);
       e.printStackTrace();
       System.exit(0);
     }

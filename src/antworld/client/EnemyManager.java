@@ -37,14 +37,12 @@ public class EnemyManager extends Thread
     {
       enemyAntServerCopy = newServerEnemySet; //Switch pointer
     }
-    //System.err.println("Updated enemy set...");
     readEnemySet = true; //Mark new server enemy set to be read
   }
 
   //Reads an enemy set and updates the manager's own set of enemies
   private void readEnemySet(AntData[] enemyArray)
   {
-    //System.err.println("reading ENEMY set");
     AntData nextEnemy;
     EnemyObjective nextStoredEnemy;
     int enemyID;
@@ -62,9 +60,6 @@ public class EnemyManager extends Thread
       nextEnemy = enemyArray[i];
       enemyID = nextEnemy.id;
 
-      System.err.println("READ ENEMY DATA: " + nextEnemy.toString());
-      System.err.println("enemyObjectiveSize= " + enemyObjectives.size());
-
       if(enemyObjectives.size() == 0)
       {
         addEnemyObjective(nextEnemy);   //Add the objective
@@ -78,20 +73,16 @@ public class EnemyManager extends Thread
         {
           nextStoredEnemy = iterator.next();
           storedEnemyID = nextStoredEnemy.getEnemyID();
-          System.err.println("\t\tnextStoredEnemy = " + storedEnemyID);
 
           if(storedEnemyID == enemyID)  //If the IDs match, must be an enemy we've seen before
           {
-            System.err.println("Found old enemy: " + nextStoredEnemy.getEnemyData().toString());
             nextStoredEnemy.updateEnemyData(nextEnemy); //Update existing site FoodData
-            System.err.println("\t new data: " + nextStoredEnemy.getEnemyData().toString());
             nextStoredEnemy.setStillVisible(true);
             newEnemy = false;
           }
 
           if(nextStoredEnemy.completed) //If this enemy has been killed
           {
-            System.err.println("REMOVED ENEMY: enemyData=" + nextStoredEnemy.getEnemyData().toString());
             nextStoredEnemy.unallocateGroup();
             iterator.remove();                          //Not removing gradient, just letting it fade away - matters?
           }
@@ -99,7 +90,6 @@ public class EnemyManager extends Thread
           {
             if(!nextStoredEnemy.getTargeted() && !unprocessedEnemies.contains(nextStoredEnemy))
             {
-              System.err.println("Enemy needs to be engaged! " + nextStoredEnemy.getEnemyData().toString());
               unprocessedEnemies.add(nextStoredEnemy);
             }
           }
@@ -165,7 +155,6 @@ public class EnemyManager extends Thread
             EnemyObjective currentObjective = (EnemyObjective) nextGroup.getGroupObjective();
             if(currentObjective != compareEnemyObjectives(nextGroup,currentObjective,enemyObjective))
             {
-              System.err.println("ROUTING TO BETTER ENEMY");
               currentObjective.unallocateGroup();
               allocateGroup(nextGroup,enemyObjective);  //At the moment just allocates one ant to one enemy
               unprocessedEnemies.remove(enemyObjective);
@@ -180,7 +169,6 @@ public class EnemyManager extends Thread
   {
     group.setGroupGoal(Goal.ATTACK);
     enemyObjective.allocateGroup(group);      //Allocate ant to new food objective
-    System.err.println("Allocating Group " + group.ID + " to enemy: " + enemyObjective.getEnemyData().toString());
   }
 
   private EnemyObjective compareEnemyObjectives(AntGroup group, EnemyObjective currentEnemy, EnemyObjective otherEnemy)
@@ -222,7 +210,6 @@ public class EnemyManager extends Thread
             unprocessedEnemies.toArray(array);
             for(int i = 0; i < array.length; i++)
             {
-              //System.err.println("Enemy Queue: \t " + array[i].getEnemyData().toString());
             }
 
             EnemyObjective nextEnemyObjective = unprocessedEnemies.peek(); //Peek instead of poll in case the food objective can't be processed

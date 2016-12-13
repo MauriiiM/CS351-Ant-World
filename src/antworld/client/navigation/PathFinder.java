@@ -124,7 +124,6 @@ public class PathFinder {
       if(nextStep == null)
       {                                                         //todo: FIGURE THIS OUT!!!!!!!!!
         System.err.println("Pathfinder Error: null pointer!!! stepQueue size = " + stepQueue.size()); //Got a null pointer here four times!, have not seen it since. Could be deleted later.
-        System.err.println("Start: (" + start.getX() + "," + start.getY() + ") : End: (" + end.getX() + "," + end.getY() + ")");
         System.exit(2);
       }
       if(nextStep.getLocation().getX() == x2 && nextStep.getLocation().getY() == y2)

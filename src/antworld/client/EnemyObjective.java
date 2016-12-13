@@ -59,8 +59,6 @@ public class EnemyObjective extends Objective
 
   public void updateEnemyData(AntData newEnemyData)
   {
-    //System.err.println("updatingEnemyData: " + newEnemyData.toString() + " : isAlive = " + newEnemyData.alive);
-
     objectiveX = newEnemyData.gridX;
     objectiveY = newEnemyData.gridY;
     enemyHealth = newEnemyData.health;
@@ -68,7 +66,6 @@ public class EnemyObjective extends Objective
 
     if(enemyHealth < 0)
     {
-      System.err.println("KILLED AN ENEMY!");
       //allocatedGroup.setGroupObjective(null);
       allocatedGroup.setGroupGoal(Goal.EXPLORE);
       targeted = false;

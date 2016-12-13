@@ -6,7 +6,7 @@ package antworld.client;
 public enum Goal
 {
   EXPLORE,
-  COLLECTWATER,
+  COLLECT_WATER,
   GOTOFOODSITE,
   RETURNTONEST,
   HEAL,

@@ -24,13 +24,13 @@ public class Client
   {
     nestManager = new NestManager(this, mapFilePath);
     myTeam = team;
-    System.out.println("Starting " + team + " on " + host + ":" + portNumber + " at "
-        + System.currentTimeMillis());
+    //System.out.println("Starting " + team + " on " + host + ":" + portNumber + " at "
+//        + System.currentTimeMillis());
 
     isConnected = openConnection(host, portNumber);
     if (!isConnected) System.exit(0);
     CommData data = obtainNest();
-
+    NestManager.NEST_NAME = data.myNest.name();
     mainGameLoop(data);
     closeAll();
   }
@@ -70,7 +70,7 @@ public class Client
 
   public void closeAll()
   {
-    System.out.println("Client.closeAll()");
+    //System.out.println("Client.closeAll()");
     {
       try
       {
@@ -101,10 +101,10 @@ public class Client
     {
       try
       {
-        if (DEBUG) System.out.println("Client: listening to socket....");
+        if (DEBUG) //System.out.println("Client: listening to socket....");
         data = (CommData) inputStream.readObject();
         if (DEBUG)
-          System.out.println("Client: received <<<<<<<<<" + inputStream.available() + "<...\n" + data);
+          //System.out.println("Client: received <<<<<<<<<" + inputStream.available() + "<...\n" + data);
 
         if (data.errorMsg != null)
         {
@@ -141,7 +141,7 @@ public class Client
     Ant.centerY = data.nestData[myNestName.ordinal()].centerY;
     AntGroup.centerX = data.nestData[myNestName.ordinal()].centerX;
     AntGroup.centerY = data.nestData[myNestName.ordinal()].centerY;
-    System.out.println("Client: ==== Nest Assigned ===>: " + myNestName);
+    //System.out.println("Client: ==== Nest Assigned ===>: " + myNestName);
     return data;
   }
 
@@ -153,19 +153,19 @@ public class Client
     {
       try
       {
-        if (DEBUG) System.out.println("Client: chooseActions: " + myNestName);
+//        if (DEBUG) System.out.println("Client: chooseActions: " + myNestName);
+        nestManager.setCommData(data);
         nestManager.chooseActionsOfAllAnts(data);   //Send the commData to the nest manager to work with
         CommData sendData = data.packageForSendToServer();  //Send the commData back to the server once the nest manager is done
 
-        System.out.println("Client: Sending>>>>>>>: " + sendData);
+//        //System.out.println("Client: Sending>>>>>>>: " + sendData);
         outputStream.writeObject(sendData);
         outputStream.flush();
         outputStream.reset();
 
-        if (DEBUG) System.out.println("Client: listening to socket....");
+//        if (DEBUG) System.out.println("Client: listening to socket....");
         CommData receivedData = (CommData) inputStream.readObject();
-        if (DEBUG)
-          System.out.println("Client: received <<<<<<<<<" + inputStream.available() + "<...\n" + receivedData);
+//        if (DEBUG) System.out.println("Client: received <<<<<<<<<" + inputStream.available() + "<...\n" + receivedData);
         data = receivedData;
 
         if ((myNestName == null) || (data.myTeam != myTeam))
@@ -194,7 +194,7 @@ public class Client
     CommData sendData = data.packageForSendToServer();
     try
     {
-      if (DEBUG) System.out.println("Client.sendCommData(" + sendData + ")");
+      if (DEBUG) //System.out.println("Client.sendCommData(" + sendData + ")");
       outputStream.writeObject(sendData);
       outputStream.flush();
       outputStream.reset();
@@ -222,7 +222,7 @@ public class Client
     if (args.length > 0) serverHost = args[args.length - 1];
 
     TeamNameEnum team;
-    if (DEBUG) team = TeamNameEnum.Allen_Brendan;
+    if (DEBUG) team = TeamNameEnum.John_Mauricio;
     else if (args.length > 1)
     {
       team = TeamNameEnum.getTeamByString(args[0]);

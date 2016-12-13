@@ -16,8 +16,6 @@ public class Ant
   static PathFinder pathFinder;
   static MapManager mapManager;
   static int centerX, centerY;
-  private static int waterCarryCap = 0;
-  private static int necessaryWater = 200;
   private static Path waterPath;
 
   Direction lastDir;
@@ -52,8 +50,6 @@ public class Ant
     if(this.antGroup != null && !this.antGroup.followOrdered) {
       //Verify antData from server matches old antData indicating that the last action was completed.
       if (newData.myAction.type == this.antData.myAction.type || currentGoal == Goal.ATTACK) {
-        //System.err.println("Ant: " + antData.toString() + "antData action= " + antData.myAction.type + " newData = " + newData.myAction.type);
-        //System.err.println("\tDID NOT MISS A STEP!!!");
         this.antData = newData;
         completedLastAction = true;
       }
@@ -66,7 +62,7 @@ public class Ant
         }
         newData.myAction = this.antData.myAction;
         this.antData = newData;
-        System.err.println("DONT ATTACK: " + this.antData.toString());
+//        System.err.println("DONT ATTACK: " + this.antData.toString());
         completedLastAction = false;
       }
     }
@@ -123,8 +119,8 @@ public class Ant
   //only called when ant's in the nest and will be true
   boolean dropFood(AntData ant, AntAction action)
   {
-    if (ant.carryType == FoodType.WATER) waterCarryCap -= ant.antType.getCarryCapacity();
-    System.err.println("ant: " + antData.toString() + " Dropping food!");
+    if (ant.carryType == FoodType.WATER) antGroup.updateAntsCarryingWater(-ant.antType.getCarryCapacity());
+//    System.err.println("ant: " + antData.toString() + " Dropping food!");
     action.type = AntAction.AntActionType.DROP;
     action.quantity = ant.carryUnits;
     return true;
@@ -157,25 +153,7 @@ public class Ant
       {
         return healSelf(action);
       }
-      if (data.foodStockPile[0] < (necessaryWater = data.myAntList.size() * 2) && waterCarryCap < necessaryWater)//if nest needs water
-      {
-        if (!hasPath)
-        {
-          if (waterPath == null) //this will set the local water path
-          {
-            waterPath = pathFinder.findPath(NearestWaterPaths.valueOf(antData.nestName.name()).waterX(), NearestWaterPaths.valueOf(antData.nestName.name()).waterY(), centerX, centerY);
-            h2oPathStepCount = waterPath.getPath().size() - 1;
-          }
-          path = waterPath;
-          waterCarryCap += ant.antType.getCarryCapacity();
-          hasPath = true;
-//          currentGoal = Goal.COLLECTWATER;
-          action.type = AntAction.AntActionType.EXIT_NEST;
-          action.x = path.getPath().get(h2oPathStepCount).getX();
-          action.y = path.getPath().get(h2oPathStepCount).getY();
-          h2oPathStepCount--;
-          return true;
-        }
+      gotones
       }
 
       int exitX = centerX - (Constants.NEST_RADIUS - 1) + random.nextInt(2 * (Constants.NEST_RADIUS - 1));
@@ -251,9 +229,6 @@ public class Ant
         action.direction = Directions.xyCoordinateToDirection(nextStepX, nextStepY, ant.gridX, ant.gridY);
         action.type = AntAction.AntActionType.MOVE;
 
-        //System.err.println("Ant : " + ant.id + " step Count = " + pathStepCount);
-        //System.err.println("\t next step: (" + nextStepX + "," + nextStepY + ")");
-        //System.err.println("\t ant: " + ant.toString());
         pathStepCount++;
       }
       else if (hasPath && pathStepCount == path.getPath().size() - 1)
@@ -267,7 +242,6 @@ public class Ant
       }
       else if(!hasPath && antData.carryUnits == 0 && !ant.underground)  //If the ant doesn't have a path, but it needs to go home
       {
-        System.err.println("Ant: " + antData.toString() + " REQUESTING PATH HOME!");
         //todo got a null pointer from step comparator here once!
         NestManager.pathFinder.requestAntPath(this, antData.gridX, antData.gridY, centerX, centerY);
       }
@@ -316,7 +290,6 @@ public class Ant
       if (path == waterPath && ant.carryUnits == 0)//going for water
       {
         action.direction = Directions.xyCoordinateToDirection(path.getPath().get(h2oPathStepCount).getX(), path.getPath().get(h2oPathStepCount).getY(), ant.gridX, ant.gridY);
-        System.err.println("ant @(" + antData.gridX + ", " + ant.gridY + ")" + "\npath @(" + path.getPath().get(h2oPathStepCount).getX() + ", " + path.getPath().get(h2oPathStepCount).getY() + ")");
         if (h2oPathStepCount == 0)
         {
           System.err.println("PICKUP WATER");
@@ -361,7 +334,6 @@ public class Ant
     action.direction = foodDirection;
     action.quantity = antData.antType.getCarryCapacity() - 1;
     foodObjective.reduceFoodLeft(antData.antType.getCarryCapacity() - 1);
-    System.err.println("Ant: " + antData.toString() + " : PICKING UP FOOD : foodLeft = " + foodObjective.getFoodLeft());
 
   }
   /*
@@ -651,10 +623,8 @@ public class Ant
       }
     }
 
-    System.err.println("\tAnt: " + antData.toString() + " : bestValSoFar = " + bestValSoFar);
     if(bestValSoFar == 0) //If no direction is good, get a general heading and go in that direction
     {
-      //System.err.println("DEAD RECKONING...");
       //bestDirection =Directions.xyCoordinateToDirection(foodObjective.getObjectiveX(),foodObjective.getObjectiveY(),x,y);
       //System.exit(3);
     }
@@ -1000,7 +970,6 @@ public class Ant
       }
     }
 
-    //System.err.println("\tAnt: " + antData.toString() + " : bestEnemyValSoFar = " + bestValSoFar);
 
     return bestDirection;
   }
@@ -1051,7 +1020,6 @@ public class Ant
     action.direction = enemyDirection;
 
     EnemyObjective enemyObjective = (EnemyObjective) currentObjective;
-    System.err.println("Ant: " + antData.toString() + " : ATTACKING: " + enemyObjective.getEnemyData().toString());
   }
 
   boolean goToEnemyAnt(AntData ant, AntAction action)
@@ -1060,8 +1028,6 @@ public class Ant
     {
       return false;
     }
-
-    System.err.println("GoToEnemy Ant: " + antData.toString());
 
     int distanceToEnemyX = Math.abs(antData.gridX - currentObjective.getObjectiveX());
     int distanceToEnemyY = Math.abs(antData.gridY - currentObjective.getObjectiveY());
@@ -1086,12 +1052,10 @@ public class Ant
     {
       return false;
     }
-    //System.err.println("GoToFood Ant: " + antData.toString() + " hasPath = " + hasPath + " : followGradient= " + followFoodGradient);
     if (hasPath) //If the ant has a path, follow it
     {
       if (pathStepCount < path.getPath().size() - 1) //If the ant has not reached the end of the path
       {
-        //System.err.println("Ant: " + antData.toString() + " FOLLOWING PATH");
         action.type = AntAction.AntActionType.MOVE;
         action.direction = Directions.xyCoordinateToDirection(path.getPath().get(pathStepCount).getX(), path.getPath().get(pathStepCount).getY(), ant.gridX, ant.gridY);
         pathStepCount++;
@@ -1114,11 +1078,9 @@ public class Ant
       int distanceToFoodX = Math.abs(antData.gridX - currentObjective.getObjectiveX());
       int distanceToFoodY = Math.abs(antData.gridY - currentObjective.getObjectiveY());
 
-      //System.err.println("Ant: " + antData.toString() + " FOLLOWING GRADIENT : distToFoodX = " + distanceToFoodX + " : distToFoodY = " + distanceToFoodY);
 
       if (distanceToFoodX <= 1 && distanceToFoodY <= 1)  //Ant is adjacent to food, pick it up
       {
-        //System.err.println("MADE IT TO FOOD! " + antData.toString());
         followFoodGradient = false;
         pickUpFood(action);
         return true;
