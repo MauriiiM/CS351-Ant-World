@@ -1,9 +1,6 @@
 package antworld.client;
 
-import antworld.client.navigation.Coordinate;
-import antworld.client.navigation.MapManager;
-import antworld.client.navigation.Path;
-import antworld.client.navigation.PathFinder;
+import antworld.client.navigation.*;
 import antworld.common.*;
 
 import java.util.ArrayList;
@@ -34,7 +31,7 @@ public class AntGroup
   private boolean checkAttritionDamage = false;
   private int randomSteps = 0;
   private boolean groupStuck = false;
-  private int ticksStuckCount=0;
+  private int ticksStuckCount = 0;
   private Coordinate lastLeaderPosition;
 
   public final int ID;
@@ -56,7 +53,7 @@ public class AntGroup
     groupLeader = leader;
     groupLeader.setAntGroup(this);
     group.add(groupLeader);
-    lastLeaderPosition = new Coordinate(groupLeader.getAntData().gridX,groupLeader.getAntData().gridY);
+    lastLeaderPosition = new Coordinate(groupLeader.getAntData().gridX, groupLeader.getAntData().gridY);
     System.err.println("Group:" + ID + " created: GroupLeader = " + groupLeader.getAntData().toString());
   }
 
@@ -69,7 +66,7 @@ public class AntGroup
   {
     //todo probably need more book keeping than this to switch leader!!
     groupLeader = newLeader;
-    lastLeaderPosition = new Coordinate(groupLeader.getAntData().gridX,groupLeader.getAntData().gridY);
+    lastLeaderPosition = new Coordinate(groupLeader.getAntData().gridX, groupLeader.getAntData().gridY);
   }
 
   public Goal getGroupGoal()
@@ -105,12 +102,12 @@ public class AntGroup
 
   public void addAntToGroup(Ant ant)
   {
-    if(!fullGroup)
+    if (!fullGroup)
     {
       System.err.println("Group " + ID + " added: " + ant.getAntData().toString());
       group.add(ant);
       ant.setAntGroup(this);
-      if(group.size() == ANTS_PER_GROUP)
+      if (group.size() == ANTS_PER_GROUP)
       {
         fullGroup = true;
       }
@@ -130,97 +127,59 @@ public class AntGroup
     checkAttritionDamage = state;
   }
 
-  private Direction getOppositeDirection(Direction dir)
-  {
-    switch (dir)
-    {
-      case NORTH:
-        return Direction.SOUTH;
-      case SOUTH:
-        return Direction.NORTH;
-      case WEST:
-        return Direction.EAST;
-      case EAST:
-        return Direction.WEST;
-      case NORTHWEST:
-        return Direction.SOUTHEAST;
-      case NORTHEAST:
-        return Direction.SOUTHWEST;
-      case SOUTHWEST:
-        return Direction.NORTHEAST;
-      case SOUTHEAST:
-        return Direction.NORTHWEST;
-    }
-    return dir;
-  }
-
-  public Direction xyCoordinateToDirection(int nextX, int nextY, int antX, int antY)
-  {
-    if (nextX == antX && nextY < antY) return Direction.NORTH;
-    if (nextX > antX && nextY < antY) return Direction.NORTHEAST;
-    if (nextX > antX && nextY == antY) return Direction.EAST;
-    if (nextX > antX && nextY > antY) return Direction.SOUTHEAST;
-    if (nextX == antX && nextY > antY) return Direction.SOUTH;
-    if (nextX < antX && nextY > antY) return Direction.SOUTHWEST;
-    if (nextX < antX && nextY == antY) return Direction.WEST;
-    if (nextX < antX && nextY < antY) return Direction.NORTHWEST;
-    //System.err.println("NO DIRECTION!! nextX= " + nextX + " nextY= " + nextY + " antX=" + antX + " antY=" + antY);
-    return null;
-  }
-
   private Direction findUnoccupiedDirection(int x, int y)
   {
     boolean foundNewDirection = false;
     Direction newDirection = Direction.NORTH;
-    if(!foundNewDirection && !mapManager.getOccupied(x,y-1))
+    if (!foundNewDirection && !mapManager.getOccupied(x, y - 1))
     {
       newDirection = Direction.NORTH;
       foundNewDirection = true;
     }
 
-    if(!foundNewDirection && !mapManager.getOccupied(x,y+1))
+    if (!foundNewDirection && !mapManager.getOccupied(x, y + 1))
     {
       newDirection = Direction.SOUTH;
       foundNewDirection = true;
     }
 
-    if(!foundNewDirection && !mapManager.getOccupied(x+1,y))
+    if (!foundNewDirection && !mapManager.getOccupied(x + 1, y))
     {
       newDirection = Direction.EAST;
       foundNewDirection = true;
     }
 
-    if(!foundNewDirection && !mapManager.getOccupied(x-1,y))
+    if (!foundNewDirection && !mapManager.getOccupied(x - 1, y))
     {
       newDirection = Direction.WEST;
       foundNewDirection = true;
     }
 
-    if(!foundNewDirection && !mapManager.getOccupied(x,y-1))
+    if (!foundNewDirection && !mapManager.getOccupied(x, y - 1))
     {
       newDirection = Direction.NORTH;
       foundNewDirection = true;
     }
 
-    if(!foundNewDirection && !mapManager.getOccupied(x+1,y-1))
+    if (!foundNewDirection && !mapManager.getOccupied(x + 1, y - 1))
     {
       newDirection = Direction.NORTHEAST;
       foundNewDirection = true;
     }
 
-    if(!foundNewDirection && !mapManager.getOccupied(x-1,y-1))
+    if (!foundNewDirection && !mapManager.getOccupied(x - 1, y - 1))
     {
       newDirection = Direction.NORTHWEST;
       foundNewDirection = true;
     }
 
-    if(!foundNewDirection && !mapManager.getOccupied(x+1,y+1))
+    if (!foundNewDirection && !mapManager.getOccupied(x + 1, y + 1))
     {
       newDirection = Direction.SOUTHEAST;
       foundNewDirection = true;
     }
 
-    if(!foundNewDirection && !mapManager.getOccupied(x-1,y+1))
+    if (!foundNewDirection && !mapManager.getOccupied(x - 1, y + 1))
     {
       newDirection = Direction.SOUTHWEST;
     }
@@ -231,19 +190,19 @@ public class AntGroup
   private boolean resetGroup()
   {
     boolean groupReady = true;   //If the entire group is underground, time to send them back out to follow orders to next objective
-    for(int i=0;i<group.size();i++)
+    for (int i = 0; i < group.size(); i++)
     {
       Ant nextAnt = group.get(i);
       AntData nextData = nextAnt.getAntData();
-      if(!nextData.underground || nextAnt.getCurrentGoal() != Goal.EXPLORE || nextData.carryUnits > 0)
+      if (!nextData.underground || nextAnt.getCurrentGoal() != Goal.EXPLORE || nextData.carryUnits > 0)
       {
         groupReady = false;
       }
     }
 
-    if(groupReady)
+    if (groupReady)
     {
-      for(int i=0;i<group.size();i++)
+      for (int i = 0; i < group.size(); i++)
       {
         Ant nextAnt = group.get(i);
         nextAnt.setLastAction(null);
@@ -259,12 +218,12 @@ public class AntGroup
   public void chooseGroupActions()
   {
 
-    if(resetGroup())
+    if (resetGroup())
     {
       followOrdered = true;
     }
 
-    if(followOrdered)
+    if (followOrdered)
     {
       chooseAntOrders();
     }
@@ -278,22 +237,22 @@ public class AntGroup
   {
     int groupLeaderX = groupLeader.getAntData().gridX;
     int groupLeaderY = groupLeader.getAntData().gridY;
-    if(groupLeaderX == lastLeaderPosition.getX() && groupLeaderY == lastLeaderPosition.getY())
+    if (groupLeaderX == lastLeaderPosition.getX() && groupLeaderY == lastLeaderPosition.getY())
     {
-      ticksStuckCount ++;
+      ticksStuckCount++;
       //System.err.println("Leader in same position! ticks stuck= " + ticksStuckCount);
-      if(ticksStuckCount > 30)
+      if (ticksStuckCount > 30)
       {
         groupStuck = true;
         ticksStuckCount = 0;
       }
 
-      if(groupStuck)
+      if (groupStuck)
       {
         System.err.println("GROUP " + ID + " STUCK!!!!!!!!!!");
-        Direction newDirection = findUnoccupiedDirection(groupLeaderX,groupLeaderY);
+        Direction newDirection = findUnoccupiedDirection(groupLeaderX, groupLeaderY);
         //System.err.println("\ttry direction:  " + newDirection.toString());
-        if(groupLeader.getNextAction() != null)
+        if (groupLeader.getNextAction() != null)
         {
           groupLeader.getNextAction().direction = newDirection;
         }
@@ -304,7 +263,7 @@ public class AntGroup
     }
     else
     {
-      if(groupStuck)
+      if (groupStuck)
       {
         groupStuck = false;
       }
@@ -321,12 +280,12 @@ public class AntGroup
 
     updateLeaderPosition();
 
-    for(int i = 0; i < group.size(); i++)
+    for (int i = 0; i < group.size(); i++)
     {
       Ant nextAnt = group.get(i);
       AntData nextAntData = nextAnt.getAntData();
       System.err.println("examining: " + nextAntData.toString() + ": completedLastAction= " + nextAnt.completedLastAction);
-      if(nextAnt.completedLastAction)
+      if (nextAnt.completedLastAction)
       {
         nextAntData.myAction = nextAnt.chooseAntAction();
         System.err.println("\t\t CHOSE ACTION: " + nextAntData.toString());
@@ -347,12 +306,12 @@ public class AntGroup
     int longestWait = 0;
     int nextWaitTime;
     int antToWaitFor = 0;
-    for(int i = 0; i < group.size(); i++)
+    for (int i = 0; i < group.size(); i++)
     {
       Ant nextAnt = group.get(i);
       nextWaitTime = nextAnt.getAntData().ticksUntilNextAction;
 
-      if(longestWait == 0 && nextWaitTime>0)
+      if (longestWait == 0 && nextWaitTime > 0)
       {
         longestWait = nextWaitTime;
         antToWaitFor = i;
@@ -362,7 +321,7 @@ public class AntGroup
     boolean antLag = false;
     int firstLag = 0;
     //System.out.println("Verifying Last Action....................");
-    for(int i = antToWaitFor; i<group.size();i++)
+    for (int i = antToWaitFor; i < group.size(); i++)
     {
       Ant nextAnt = group.get(i);
       AntData nextAntData = nextAnt.getAntData();
@@ -370,16 +329,16 @@ public class AntGroup
       //System.out.println("\t\t ticksUntilNextAction=" + nextAntData.ticksUntilNextAction);
 
 
-      if(nextAnt.getNextAction() != null && nextAntData.myAction.type == nextAnt.getNextAction().type)
+      if (nextAnt.getNextAction() != null && nextAntData.myAction.type == nextAnt.getNextAction().type)
       {
         nextAnt.completedLastAction = true;   //Completed action
         nextAnt.setLastAction(nextAnt.getNextAction()); //Store completed action for next ant to copy
         //nextAnt.setNextAction(null);
         //nextAntData.myAction.type = AntAction.AntActionType.STASIS;
       }
-      else if(nextAnt.getNextAction() != null)
+      else if (nextAnt.getNextAction() != null)
       {
-        if(!antLag)
+        if (!antLag)
         {
           firstLag = i;
         }
@@ -401,14 +360,14 @@ public class AntGroup
       */
     }
 
-    if(antLag)
+    if (antLag)
     {
-      if(!(firstLag == 1 && groupLeader.getAntData().carryUnits > 0))
+      if (!(firstLag == 1 && groupLeader.getAntData().carryUnits > 0))
       {
         //System.err.println("\t Ant Lag! First lag=" + firstLag);
-        for(int i = firstLag-1; i>= 0; i--)
+        for (int i = firstLag - 1; i >= 0; i--)
         {
-          Ant antToStall = group.get(firstLag-1);
+          Ant antToStall = group.get(firstLag - 1);
           //System.err.println("\tstalling ant: " + antToStall.getAntData().toString());
           antToStall.getAntData().myAction.type = AntAction.AntActionType.STASIS;
         }
@@ -418,25 +377,25 @@ public class AntGroup
 
     //System.err.println("Group: " + ID + " Actions verified........" + groupGoal.toString());
 
-    for(int i = 0; i < group.size(); i++)
+    for (int i = 0; i < group.size(); i++)
     {
       Ant nextAnt = group.get(i);
       AntData nextAntData = nextAnt.getAntData();
 
-      if(i==0 && nextAntData.ticksUntilNextAction <= 1 && (nextAnt.completedLastAction || nextAnt.getNextAction() == null)) //First ant will always be the group leader
+      if (i == 0 && nextAntData.ticksUntilNextAction <= 1 && (nextAnt.completedLastAction || nextAnt.getNextAction() == null)) //First ant will always be the group leader
       {
         AntAction nextAction = chooseAntAction(groupLeader);
         nextAntData.myAction = nextAction;
         nextAnt.setNextAction(nextAction);
         nextAnt.completedLastAction = false;
       }
-      else if(nextAntData.ticksUntilNextAction <= 1)
+      else if (nextAntData.ticksUntilNextAction <= 1)
       {
-        if(nextAnt.completedLastAction|| nextAnt.getNextAction() == null)
+        if (nextAnt.completedLastAction || nextAnt.getNextAction() == null)
         {
-          Ant previousAnt = group.get(i-1);
+          Ant previousAnt = group.get(i - 1);
           AntAction previousAntAction = previousAnt.getLastAction();
-          if(previousAntAction != null)
+          if (previousAntAction != null)
           {
             nextAntData.myAction = previousAntAction;
             nextAnt.setNextAction(previousAntAction);
@@ -447,7 +406,7 @@ public class AntGroup
 
       //System.err.println("\t i=" + i + " : nextAntData=" + nextAntData.toString());
       //System.err.println("\t\t ticksUntilNextAction=" + nextAntData.ticksUntilNextAction);
-      if(nextAnt.getNextAction() != null)
+      if (nextAnt.getNextAction() != null)
       {
         //System.err.println("\t\t nextAction = " + nextAnt.getNextAction().toString() + " : lastActionCompleted= " + nextAnt.completedLastAction);
       }
@@ -466,19 +425,19 @@ public class AntGroup
 
     if (antData.ticksUntilNextAction > 1) return antAction;
 
-    if (exitNest(antData,antAction)) return antAction;
+    if (exitNest(antData, antAction)) return antAction;
 
     //if (this.ant.attackEnemyAnt(ant, action)) return action;
 
-    if (goToNest(antData,antAction)) return antAction;
+    if (goToNest(antData, antAction)) return antAction;
 
-    if (goToEnemyAnt(antData,antAction)) return antAction;
+    if (goToEnemyAnt(antData, antAction)) return antAction;
 
-    if (goToFood(antData,antAction)) return antAction;
+    if (goToFood(antData, antAction)) return antAction;
 
-    if (goToGoodAnt(antData,antAction)) return antAction;
+    if (goToGoodAnt(antData, antAction)) return antAction;
 
-    if (goExplore(antData,antAction)) return antAction;
+    if (goExplore(antData, antAction)) return antAction;
 
     return antAction;
   }
@@ -486,7 +445,7 @@ public class AntGroup
   private void freeAntsFromOrders(Goal goal, Objective objective)
   {
     System.err.println("FREE ANTS FROM ORDERS");
-    for(int i= 0; i<group.size();i++)
+    for (int i = 0; i < group.size(); i++)
     {
       Ant nextAnt = group.get(i);
       nextAnt.setCurrentGoal(goal);
@@ -526,7 +485,7 @@ public class AntGroup
         return dropFood(ant, action);
       }
 
-      if(ant.health < 20)
+      if (ant.health < 20)
       {
         return healSelf(action);
       }
@@ -534,10 +493,10 @@ public class AntGroup
       int exitX = centerX - (Constants.NEST_RADIUS - 1) + random.nextInt(2 * (Constants.NEST_RADIUS - 1));
       int deltaX = Math.abs(centerX - exitX);
       int exitY;
-      int deltaY = 20-deltaX;
+      int deltaY = 20 - deltaX;
       System.err.println("\t Center : (" + centerX + "," + centerY + ")");
       System.err.println("\t Delta X=  " + deltaX);
-      if(random.nextBoolean())
+      if (random.nextBoolean())
       {
         exitY = centerY + deltaY;
       }
@@ -567,7 +526,7 @@ public class AntGroup
       {
         int deltaX = Math.abs(centerX - ant.gridX);
         int deltaY = Math.abs(centerY - ant.gridY);
-        if((deltaX + deltaY) <= 20)  //If the ant is less than 20 cells away from the center of the nest, it must be on the nest.
+        if ((deltaX + deltaY) <= 20)  //If the ant is less than 20 cells away from the center of the nest, it must be on the nest.
         {
           action.type = enterNest();
           endPath();
@@ -576,8 +535,8 @@ public class AntGroup
         }
 
         action.type = AntAction.AntActionType.MOVE;
-        action.direction = xyCoordinateToDirection(path.getPath().get(pathStepCount).getX(), path.getPath().get(pathStepCount).getY(), ant.gridX, ant.gridY);
-        if(ant == groupLeader.getAntData())
+        action.direction = Directions.xyCoordinateToDirection(path.getPath().get(pathStepCount).getX(), path.getPath().get(pathStepCount).getY(), ant.gridX, ant.gridY);
+        if (ant == groupLeader.getAntData())
         {
           pathStepCount++;
         }
@@ -591,11 +550,11 @@ public class AntGroup
         endPath();
         groupGoal = Goal.EXPLORE;
       }
-      else if(!hasPath && ant.carryUnits > 0)  //If the ant doesn't have a path yet, but is carrying food
+      else if (!hasPath && ant.carryUnits > 0)  //If the ant doesn't have a path yet, but is carrying food
       {
-        findPathFromFoodToNest(ant,action);
+        findPathFromFoodToNest(ant, action);
       }
-      else if(!hasPath && ant.carryUnits == 0)  //If the ant doesn't have a path, but it needs to go home
+      else if (!hasPath && ant.carryUnits == 0)  //If the ant doesn't have a path, but it needs to go home
       {
         //System.err.println("Ant: " + antData.toString() + " REQUESTING PATH HOME!");
         NestManager.pathFinder.requestGroupPath(this, ant.gridX, ant.gridY, centerX, centerY);
@@ -608,7 +567,7 @@ public class AntGroup
   private void findPathFromFoodToNest(AntData ant, AntAction action)
   {
     FoodObjective foodObjective = null;
-    if(groupObjective instanceof FoodObjective)
+    if (groupObjective instanceof FoodObjective)
     {
       foodObjective = (FoodObjective) groupObjective;
     }
@@ -639,7 +598,7 @@ public class AntGroup
     int foodY = groupObjective.getObjectiveY();
     int antX = ant.gridX;
     int antY = ant.gridY;
-    Direction foodDirection = xyCoordinateToDirection(foodX,foodY,antX,antY);
+    Direction foodDirection = Directions.xyCoordinateToDirection(foodX, foodY, antX, antY);
 
     action.type = AntAction.AntActionType.PICKUP;
     action.direction = foodDirection;
@@ -647,7 +606,7 @@ public class AntGroup
     FoodObjective foodObjective = (FoodObjective) groupObjective;
     foodObjective.reduceFoodLeft(ant.antType.getCarryCapacity() - 1);
 
-    if(ant == groupLeader.getAntData())
+    if (ant == groupLeader.getAntData())
     {
       System.err.println("Group: " + ID + " : Ant: " + ant.toString() + " : PICKING UP FOOD : foodLeft = " + foodObjective.getFoodLeft());
       setGroupGoal(Goal.RETURNTONEST);
@@ -665,44 +624,44 @@ public class AntGroup
     switch (direction)
     {
       case NORTH:
-        explorationValue += mapManager.getExplorationVal(x,y-29);
-        explorationValue += mapManager.getExplorationVal(x,y-1);
-        explorationValue += mapManager.getExplorationVal(x,y-32);
+        explorationValue += mapManager.getExplorationVal(x, y - 29);
+        explorationValue += mapManager.getExplorationVal(x, y - 1);
+        explorationValue += mapManager.getExplorationVal(x, y - 32);
         break;
       case NORTHEAST:
-        explorationValue += mapManager.getExplorationVal(x+29,y-29);
-        explorationValue += mapManager.getExplorationVal(x+1,y-1);
-        explorationValue += mapManager.getExplorationVal(x+32,y-32);
+        explorationValue += mapManager.getExplorationVal(x + 29, y - 29);
+        explorationValue += mapManager.getExplorationVal(x + 1, y - 1);
+        explorationValue += mapManager.getExplorationVal(x + 32, y - 32);
         break;
       case NORTHWEST:
-        explorationValue += mapManager.getExplorationVal(x-29,y-29);
-        explorationValue += mapManager.getExplorationVal(x-1,y-1);
-        explorationValue += mapManager.getExplorationVal(x-32,y-32);
+        explorationValue += mapManager.getExplorationVal(x - 29, y - 29);
+        explorationValue += mapManager.getExplorationVal(x - 1, y - 1);
+        explorationValue += mapManager.getExplorationVal(x - 32, y - 32);
         break;
       case SOUTH:
-        explorationValue += mapManager.getExplorationVal(x,y+29);
-        explorationValue += mapManager.getExplorationVal(x,y+1);
-        explorationValue += mapManager.getExplorationVal(x,y+32);
+        explorationValue += mapManager.getExplorationVal(x, y + 29);
+        explorationValue += mapManager.getExplorationVal(x, y + 1);
+        explorationValue += mapManager.getExplorationVal(x, y + 32);
         break;
       case SOUTHEAST:
-        explorationValue += mapManager.getExplorationVal(x+29,y+29);
-        explorationValue += mapManager.getExplorationVal(x+1,y+1);
-        explorationValue += mapManager.getExplorationVal(x+32,y+32);
+        explorationValue += mapManager.getExplorationVal(x + 29, y + 29);
+        explorationValue += mapManager.getExplorationVal(x + 1, y + 1);
+        explorationValue += mapManager.getExplorationVal(x + 32, y + 32);
         break;
       case SOUTHWEST:
-        explorationValue += mapManager.getExplorationVal(x-29,y+29);
-        explorationValue += mapManager.getExplorationVal(x-1,y+1);
-        explorationValue += mapManager.getExplorationVal(x-32,y+32);
+        explorationValue += mapManager.getExplorationVal(x - 29, y + 29);
+        explorationValue += mapManager.getExplorationVal(x - 1, y + 1);
+        explorationValue += mapManager.getExplorationVal(x - 32, y + 32);
         break;
       case EAST:
-        explorationValue += mapManager.getExplorationVal(x+29,y);
-        explorationValue += mapManager.getExplorationVal(x+1,y);
-        explorationValue += mapManager.getExplorationVal(x+32,y);
+        explorationValue += mapManager.getExplorationVal(x + 29, y);
+        explorationValue += mapManager.getExplorationVal(x + 1, y);
+        explorationValue += mapManager.getExplorationVal(x + 32, y);
         break;
       case WEST:
-        explorationValue += mapManager.getExplorationVal(x-29,y);
-        explorationValue += mapManager.getExplorationVal(x-1,y);
-        explorationValue += mapManager.getExplorationVal(x-32,y);
+        explorationValue += mapManager.getExplorationVal(x - 29, y);
+        explorationValue += mapManager.getExplorationVal(x - 1, y);
+        explorationValue += mapManager.getExplorationVal(x - 32, y);
         break;
     }
     return explorationValue / 3;
@@ -710,21 +669,21 @@ public class AntGroup
 
   private Direction getBestDirectionToExplore(int x, int y)
   {
-    int exploreValNorth = getAverageExploreVal(x,y,Direction.NORTH);
+    int exploreValNorth = getAverageExploreVal(x, y, Direction.NORTH);
     int bestValSoFar = exploreValNorth;
     Direction oppositeDirection;
     Direction bestDirection;
 
-    if(lastDir != null)
+    if (lastDir != null)
     {
-      oppositeDirection = getOppositeDirection(lastDir);
+      oppositeDirection = Directions.getOppositeDirection(lastDir);
     }
     else
     {
-      oppositeDirection = xyCoordinateToDirection(centerX,centerY,groupLeader.getAntData().gridX,groupLeader.getAntData().gridY);
+      oppositeDirection = Directions.xyCoordinateToDirection(centerX, centerY, groupLeader.getAntData().gridX, groupLeader.getAntData().gridY);
     }
 
-    if(oppositeDirection != Direction.NORTH)
+    if (oppositeDirection != Direction.NORTH)
     {
       bestDirection = Direction.NORTH;
     }
@@ -734,7 +693,7 @@ public class AntGroup
     }
 
 
-    if(oppositeDirection != Direction.NORTHEAST && verifyHeading(x,y,Direction.NORTHEAST))
+    if (oppositeDirection != Direction.NORTHEAST && verifyHeading(x, y, Direction.NORTHEAST))
     {
       int exploreValNE = getAverageExploreVal(x, y, Direction.NORTHEAST);
       if (exploreValNE > bestValSoFar)
@@ -752,95 +711,107 @@ public class AntGroup
       }
     }
 
-    if(oppositeDirection != Direction.NORTHWEST && verifyHeading(x,y,Direction.NORTHWEST))
+    if (oppositeDirection != Direction.NORTHWEST && verifyHeading(x, y, Direction.NORTHWEST))
     {
       int exploreValNW = getAverageExploreVal(x, y, Direction.NORTHWEST);
-      if (exploreValNW > bestValSoFar) {
+      if (exploreValNW > bestValSoFar)
+      {
         bestValSoFar = exploreValNW;
         bestDirection = Direction.NORTHWEST;
       }
       else if (exploreValNW == bestValSoFar)
       {
-        if (random.nextBoolean()) {
+        if (random.nextBoolean())
+        {
           bestDirection = Direction.NORTHWEST;
           randomWalk = true;
         }
       }
     }
 
-    if(oppositeDirection != Direction.SOUTH && verifyHeading(x,y,Direction.SOUTH))
+    if (oppositeDirection != Direction.SOUTH && verifyHeading(x, y, Direction.SOUTH))
     {
       int exploreValSouth = getAverageExploreVal(x, y, Direction.SOUTH);
-      if (exploreValSouth > bestValSoFar) {
+      if (exploreValSouth > bestValSoFar)
+      {
         bestValSoFar = exploreValSouth;
         bestDirection = Direction.SOUTH;
       }
       else if (exploreValSouth == bestValSoFar)
       {
-        if (random.nextBoolean()) {
+        if (random.nextBoolean())
+        {
           bestDirection = Direction.SOUTH;
           randomWalk = true;
         }
       }
     }
 
-    if(oppositeDirection != Direction.SOUTHEAST && verifyHeading(x,y,Direction.SOUTHEAST))
+    if (oppositeDirection != Direction.SOUTHEAST && verifyHeading(x, y, Direction.SOUTHEAST))
     {
       int exploreValSE = getAverageExploreVal(x, y, Direction.SOUTHEAST);
-      if (exploreValSE > bestValSoFar) {
+      if (exploreValSE > bestValSoFar)
+      {
         bestValSoFar = exploreValSE;
         bestDirection = Direction.SOUTHEAST;
       }
       else if (exploreValSE == bestValSoFar)
       {
-        if (random.nextBoolean()) {
+        if (random.nextBoolean())
+        {
           bestDirection = Direction.SOUTHEAST;
           randomWalk = true;
         }
       }
     }
 
-    if(oppositeDirection != Direction.SOUTHWEST && verifyHeading(x,y,Direction.SOUTHWEST))
+    if (oppositeDirection != Direction.SOUTHWEST && verifyHeading(x, y, Direction.SOUTHWEST))
     {
       int exploreValSW = getAverageExploreVal(x, y, Direction.SOUTHWEST);
-      if (exploreValSW > bestValSoFar) {
+      if (exploreValSW > bestValSoFar)
+      {
         bestValSoFar = exploreValSW;
         bestDirection = Direction.SOUTHWEST;
       }
       else if (exploreValSW == bestValSoFar)
       {
-        if (random.nextBoolean()) {
+        if (random.nextBoolean())
+        {
           bestDirection = Direction.SOUTHWEST;
           randomWalk = true;
         }
       }
     }
 
-    if(oppositeDirection != Direction.EAST && verifyHeading(x,y,Direction.EAST))
+    if (oppositeDirection != Direction.EAST && verifyHeading(x, y, Direction.EAST))
     {
       int exploreValEast = getAverageExploreVal(x, y, Direction.EAST);
-      if (exploreValEast > bestValSoFar) {
+      if (exploreValEast > bestValSoFar)
+      {
         bestValSoFar = exploreValEast;
         bestDirection = Direction.EAST;
       }
       else if (exploreValEast == bestValSoFar)
       {
-        if (random.nextBoolean()) {
+        if (random.nextBoolean())
+        {
           bestDirection = Direction.EAST;
           randomWalk = true;
         }
       }
     }
 
-    if(oppositeDirection != Direction.WEST && verifyHeading(x,y,Direction.WEST))
+    if (oppositeDirection != Direction.WEST && verifyHeading(x, y, Direction.WEST))
     {
       int exploreValWest = getAverageExploreVal(x, y, Direction.WEST);
-      if (exploreValWest > bestValSoFar) {
+      if (exploreValWest > bestValSoFar)
+      {
         bestDirection = Direction.WEST;
       }
       else if (exploreValWest == bestValSoFar)
       {
-        if (random.nextBoolean()) {
+        if (random.nextBoolean())
+        {
           bestDirection = Direction.WEST;
           randomWalk = true;
         }
@@ -858,28 +829,28 @@ public class AntGroup
     switch (direction)
     {
       case NORTH:
-        foodGradientVal += mapManager.getFoodProximityVal(x,y-1);
+        foodGradientVal += mapManager.getFoodProximityVal(x, y - 1);
         break;
       case NORTHEAST:
-        foodGradientVal += mapManager.getFoodProximityVal(x+1,y-1);
+        foodGradientVal += mapManager.getFoodProximityVal(x + 1, y - 1);
         break;
       case NORTHWEST:
-        foodGradientVal += mapManager.getFoodProximityVal(x-1,y-1);
+        foodGradientVal += mapManager.getFoodProximityVal(x - 1, y - 1);
         break;
       case SOUTH:
-        foodGradientVal += mapManager.getFoodProximityVal(x,y+1);
+        foodGradientVal += mapManager.getFoodProximityVal(x, y + 1);
         break;
       case SOUTHEAST:
-        foodGradientVal += mapManager.getFoodProximityVal(x+1,y+1);
+        foodGradientVal += mapManager.getFoodProximityVal(x + 1, y + 1);
         break;
       case SOUTHWEST:
-        foodGradientVal += mapManager.getFoodProximityVal(x-1,y+1);
+        foodGradientVal += mapManager.getFoodProximityVal(x - 1, y + 1);
         break;
       case EAST:
-        foodGradientVal += mapManager.getFoodProximityVal(x+1,y);
+        foodGradientVal += mapManager.getFoodProximityVal(x + 1, y);
         break;
       case WEST:
-        foodGradientVal += mapManager.getFoodProximityVal(x-1,y);
+        foodGradientVal += mapManager.getFoodProximityVal(x - 1, y);
         break;
     }
     return foodGradientVal;
@@ -887,84 +858,84 @@ public class AntGroup
 
   private Direction getBestDirectionToFood(int x, int y)
   {
-    Direction heading = xyCoordinateToDirection(groupObjective.getObjectiveX(),groupObjective.getObjectiveY(),x,y);
+    Direction heading = Directions.xyCoordinateToDirection(groupObjective.getObjectiveX(), groupObjective.getObjectiveY(), x, y);
     int bestValSoFar = 0;
     Direction bestDirection = heading;
 
-    if(heading == Direction.NORTH || heading == Direction.NORTHEAST || heading == Direction.NORTHWEST)
+    if (heading == Direction.NORTH || heading == Direction.NORTHEAST || heading == Direction.NORTHWEST)
     {
-      int foodValNorth = getFoodGradientVal(x,y,Direction.NORTH);
-      if(foodValNorth > bestValSoFar)
+      int foodValNorth = getFoodGradientVal(x, y, Direction.NORTH);
+      if (foodValNorth > bestValSoFar)
       {
         bestValSoFar = foodValNorth;
         bestDirection = Direction.NORTH;
       }
     }
 
-    if(heading == Direction.NORTH || heading == Direction.NORTHEAST || heading == Direction.EAST)
+    if (heading == Direction.NORTH || heading == Direction.NORTHEAST || heading == Direction.EAST)
     {
-      int foodValNE = getFoodGradientVal(x,y,Direction.NORTHEAST);
-      if(foodValNE > bestValSoFar)
+      int foodValNE = getFoodGradientVal(x, y, Direction.NORTHEAST);
+      if (foodValNE > bestValSoFar)
       {
         bestValSoFar = foodValNE;
         bestDirection = Direction.NORTHEAST;
       }
     }
 
-    if(heading == Direction.NORTH || heading == Direction.NORTHWEST || heading == Direction.WEST)
+    if (heading == Direction.NORTH || heading == Direction.NORTHWEST || heading == Direction.WEST)
     {
-      int foodValNW = getFoodGradientVal(x,y,Direction.NORTHWEST);
-      if(foodValNW > bestValSoFar)
+      int foodValNW = getFoodGradientVal(x, y, Direction.NORTHWEST);
+      if (foodValNW > bestValSoFar)
       {
         bestValSoFar = foodValNW;
         bestDirection = Direction.NORTHWEST;
       }
     }
 
-    if(heading == Direction.SOUTH || heading == Direction.SOUTHEAST || heading == Direction.SOUTHWEST)
+    if (heading == Direction.SOUTH || heading == Direction.SOUTHEAST || heading == Direction.SOUTHWEST)
     {
-      int foodValSouth = getFoodGradientVal(x,y,Direction.SOUTH);
-      if(foodValSouth > bestValSoFar)
+      int foodValSouth = getFoodGradientVal(x, y, Direction.SOUTH);
+      if (foodValSouth > bestValSoFar)
       {
         bestValSoFar = foodValSouth;
         bestDirection = Direction.SOUTH;
       }
     }
 
-    if(heading == Direction.SOUTH || heading == Direction.SOUTHEAST || heading == Direction.EAST)
+    if (heading == Direction.SOUTH || heading == Direction.SOUTHEAST || heading == Direction.EAST)
     {
-      int foodValSE = getFoodGradientVal(x,y,Direction.SOUTHEAST);
-      if(foodValSE > bestValSoFar)
+      int foodValSE = getFoodGradientVal(x, y, Direction.SOUTHEAST);
+      if (foodValSE > bestValSoFar)
       {
         bestValSoFar = foodValSE;
         bestDirection = Direction.SOUTHEAST;
       }
     }
 
-    if(heading == Direction.SOUTH || heading == Direction.SOUTHWEST || heading == Direction.WEST)
+    if (heading == Direction.SOUTH || heading == Direction.SOUTHWEST || heading == Direction.WEST)
     {
-      int foodValSW = getFoodGradientVal(x,y,Direction.SOUTHWEST);
-      if(foodValSW > bestValSoFar)
+      int foodValSW = getFoodGradientVal(x, y, Direction.SOUTHWEST);
+      if (foodValSW > bestValSoFar)
       {
         bestValSoFar = foodValSW;
         bestDirection = Direction.SOUTHWEST;
       }
     }
 
-    if(heading == Direction.EAST || heading == Direction.NORTHEAST || heading == Direction.SOUTHEAST)
+    if (heading == Direction.EAST || heading == Direction.NORTHEAST || heading == Direction.SOUTHEAST)
     {
-      int foodValEast = getFoodGradientVal(x,y,Direction.EAST);
-      if(foodValEast > bestValSoFar)
+      int foodValEast = getFoodGradientVal(x, y, Direction.EAST);
+      if (foodValEast > bestValSoFar)
       {
         bestValSoFar = foodValEast;
         bestDirection = Direction.EAST;
       }
     }
 
-    if(heading == Direction.WEST || heading == Direction.NORTHWEST || heading == Direction.NORTHEAST)
+    if (heading == Direction.WEST || heading == Direction.NORTHWEST || heading == Direction.NORTHEAST)
     {
-      int foodValWest = getFoodGradientVal(x,y,Direction.WEST);
-      if(foodValWest > bestValSoFar)
+      int foodValWest = getFoodGradientVal(x, y, Direction.WEST);
+      if (foodValWest > bestValSoFar)
       {
         bestValSoFar = foodValWest;
         bestDirection = Direction.WEST;
@@ -972,10 +943,10 @@ public class AntGroup
     }
 
     //System.err.println("\tAnt: " + antData.toString() + " : bestValSoFar = " + bestValSoFar);
-    if(bestValSoFar == 0) //If no direction is good, get a general heading and go in that direction
+    if (bestValSoFar == 0) //If no direction is good, get a general heading and go in that direction
     {
       //System.err.println("DEAD RECKONING...");
-      //bestDirection = xyCoordinateToDirection(foodObjective.getObjectiveX(),foodObjective.getObjectiveY(),x,y);
+      //bestDirection =Directions.xyCoordinateToDirection(foodObjective.getObjectiveX(),foodObjective.getObjectiveY(),x,y);
       //System.exit(3);
     }
     //lastFoodGradientVal = bestValSoFar;
@@ -989,28 +960,28 @@ public class AntGroup
     switch (direction)
     {
       case NORTH:
-        pathGradientVal += mapManager.getPathProximityVal(x,y-1);
+        pathGradientVal += mapManager.getPathProximityVal(x, y - 1);
         break;
       case NORTHEAST:
-        pathGradientVal += mapManager.getPathProximityVal(x+1,y-1);
+        pathGradientVal += mapManager.getPathProximityVal(x + 1, y - 1);
         break;
       case NORTHWEST:
-        pathGradientVal += mapManager.getPathProximityVal(x-1,y-1);
+        pathGradientVal += mapManager.getPathProximityVal(x - 1, y - 1);
         break;
       case SOUTH:
-        pathGradientVal += mapManager.getPathProximityVal(x,y+1);
+        pathGradientVal += mapManager.getPathProximityVal(x, y + 1);
         break;
       case SOUTHEAST:
-        pathGradientVal += mapManager.getPathProximityVal(x+1,y+1);
+        pathGradientVal += mapManager.getPathProximityVal(x + 1, y + 1);
         break;
       case SOUTHWEST:
-        pathGradientVal += mapManager.getPathProximityVal(x-1,y+1);
+        pathGradientVal += mapManager.getPathProximityVal(x - 1, y + 1);
         break;
       case EAST:
-        pathGradientVal += mapManager.getPathProximityVal(x+1,y);
+        pathGradientVal += mapManager.getPathProximityVal(x + 1, y);
         break;
       case WEST:
-        pathGradientVal += mapManager.getPathProximityVal(x-1,y);
+        pathGradientVal += mapManager.getPathProximityVal(x - 1, y);
         break;
     }
     return pathGradientVal;
@@ -1018,54 +989,54 @@ public class AntGroup
 
   private Direction getBestDirectionToPath(int x, int y)
   {
-    int pathValNorth = getPathGradientVal(x,y,Direction.NORTH);
+    int pathValNorth = getPathGradientVal(x, y, Direction.NORTH);
     int bestValSoFar = pathValNorth;
     Direction bestDirection = Direction.NORTH;
 
-    int pathValNE = getPathGradientVal(x,y,Direction.NORTHEAST);
-    if(pathValNE > bestValSoFar)
+    int pathValNE = getPathGradientVal(x, y, Direction.NORTHEAST);
+    if (pathValNE > bestValSoFar)
     {
       bestValSoFar = pathValNE;
       bestDirection = Direction.NORTHEAST;
     }
 
-    int pathValNW = getPathGradientVal(x,y,Direction.NORTHWEST);
-    if(pathValNW > bestValSoFar)
+    int pathValNW = getPathGradientVal(x, y, Direction.NORTHWEST);
+    if (pathValNW > bestValSoFar)
     {
       bestValSoFar = pathValNW;
       bestDirection = Direction.NORTHWEST;
     }
 
-    int pathValSouth = getPathGradientVal(x,y,Direction.SOUTH);
-    if(pathValSouth > bestValSoFar)
+    int pathValSouth = getPathGradientVal(x, y, Direction.SOUTH);
+    if (pathValSouth > bestValSoFar)
     {
       bestValSoFar = pathValSouth;
       bestDirection = Direction.SOUTH;
     }
 
-    int pathValSE = getPathGradientVal(x,y,Direction.SOUTHEAST);
-    if(pathValSE > bestValSoFar)
+    int pathValSE = getPathGradientVal(x, y, Direction.SOUTHEAST);
+    if (pathValSE > bestValSoFar)
     {
       bestValSoFar = pathValSE;
       bestDirection = Direction.SOUTHEAST;
     }
 
-    int pathValSW = getPathGradientVal(x,y,Direction.SOUTHWEST);
-    if(pathValSW > bestValSoFar)
+    int pathValSW = getPathGradientVal(x, y, Direction.SOUTHWEST);
+    if (pathValSW > bestValSoFar)
     {
       bestValSoFar = pathValSW;
       bestDirection = Direction.SOUTHWEST;
     }
 
-    int pathValEast = getPathGradientVal(x,y,Direction.EAST);
-    if(pathValEast > bestValSoFar)
+    int pathValEast = getPathGradientVal(x, y, Direction.EAST);
+    if (pathValEast > bestValSoFar)
     {
       bestValSoFar = pathValEast;
       bestDirection = Direction.EAST;
     }
 
-    int pathValWest = getPathGradientVal(x,y,Direction.WEST);
-    if(pathValWest > bestValSoFar)
+    int pathValWest = getPathGradientVal(x, y, Direction.WEST);
+    if (pathValWest > bestValSoFar)
     {
       bestDirection = Direction.WEST;
     }
@@ -1080,39 +1051,39 @@ public class AntGroup
     switch (direction)
     {
       case NORTH:
-        enemyGradientVal += mapManager.getEnemyProximityVal(x,y-1);
-        enemyGradientVal += mapManager.getEnemyProximityVal(x,y-29);
+        enemyGradientVal += mapManager.getEnemyProximityVal(x, y - 1);
+        enemyGradientVal += mapManager.getEnemyProximityVal(x, y - 29);
         break;
       case NORTHEAST:
-        enemyGradientVal += mapManager.getEnemyProximityVal(x+1,y-1);
-        enemyGradientVal += mapManager.getEnemyProximityVal(x+29,y-29);
+        enemyGradientVal += mapManager.getEnemyProximityVal(x + 1, y - 1);
+        enemyGradientVal += mapManager.getEnemyProximityVal(x + 29, y - 29);
         break;
       case NORTHWEST:
-        enemyGradientVal += mapManager.getEnemyProximityVal(x-1,y-1);
-        enemyGradientVal += mapManager.getEnemyProximityVal(x-29,y-29);
+        enemyGradientVal += mapManager.getEnemyProximityVal(x - 1, y - 1);
+        enemyGradientVal += mapManager.getEnemyProximityVal(x - 29, y - 29);
         break;
       case SOUTH:
-        enemyGradientVal += mapManager.getEnemyProximityVal(x,y+1);
-        enemyGradientVal += mapManager.getEnemyProximityVal(x,y+29);
+        enemyGradientVal += mapManager.getEnemyProximityVal(x, y + 1);
+        enemyGradientVal += mapManager.getEnemyProximityVal(x, y + 29);
         break;
       case SOUTHEAST:
-        enemyGradientVal += mapManager.getEnemyProximityVal(x+1,y+1);
-        enemyGradientVal += mapManager.getEnemyProximityVal(x+29,y+29);
+        enemyGradientVal += mapManager.getEnemyProximityVal(x + 1, y + 1);
+        enemyGradientVal += mapManager.getEnemyProximityVal(x + 29, y + 29);
         break;
       case SOUTHWEST:
-        enemyGradientVal += mapManager.getEnemyProximityVal(x-1,y+1);
-        enemyGradientVal += mapManager.getEnemyProximityVal(x-29,y+29);
+        enemyGradientVal += mapManager.getEnemyProximityVal(x - 1, y + 1);
+        enemyGradientVal += mapManager.getEnemyProximityVal(x - 29, y + 29);
         break;
       case EAST:
-        enemyGradientVal += mapManager.getEnemyProximityVal(x+1,y);
-        enemyGradientVal += mapManager.getEnemyProximityVal(x+29,y);
+        enemyGradientVal += mapManager.getEnemyProximityVal(x + 1, y);
+        enemyGradientVal += mapManager.getEnemyProximityVal(x + 29, y);
         break;
       case WEST:
-        enemyGradientVal += mapManager.getEnemyProximityVal(x-1,y);
-        enemyGradientVal += mapManager.getEnemyProximityVal(x-29,y);
+        enemyGradientVal += mapManager.getEnemyProximityVal(x - 1, y);
+        enemyGradientVal += mapManager.getEnemyProximityVal(x - 29, y);
         break;
     }
-    return enemyGradientVal/2;
+    return enemyGradientVal / 2;
   }
 
   private boolean verifyHeading(int x, int y, Direction heading)
@@ -1121,90 +1092,91 @@ public class AntGroup
     LandType cellType;
     boolean occupied;
 
-    switch (heading) {
+    switch (heading)
+    {
       case NORTH:
-        cellType = mapManager.getLandType(x,y-1);
-        if(cellType != null && cellType != LandType.WATER && cellType != LandType.NEST)
+        cellType = mapManager.getLandType(x, y - 1);
+        if (cellType != null && cellType != LandType.WATER && cellType != LandType.NEST)
         {
-          occupied = mapManager.getOccupied(x, y-1);
-          if(!occupied)
+          occupied = mapManager.getOccupied(x, y - 1);
+          if (!occupied)
           {
             validMove = true;
           }
         }
         break;
       case NORTHEAST:
-        cellType = mapManager.getLandType(x+1,y-1);
-        if(cellType != null && cellType != LandType.WATER && cellType != LandType.NEST)
+        cellType = mapManager.getLandType(x + 1, y - 1);
+        if (cellType != null && cellType != LandType.WATER && cellType != LandType.NEST)
         {
-          occupied = mapManager.getOccupied(x+1, y-1);
-          if(!occupied)
+          occupied = mapManager.getOccupied(x + 1, y - 1);
+          if (!occupied)
           {
             validMove = true;
           }
         }
         break;
       case NORTHWEST:
-        cellType = mapManager.getLandType(x-1,y-1);
-        if(cellType != null && cellType != LandType.WATER && cellType != LandType.NEST)
+        cellType = mapManager.getLandType(x - 1, y - 1);
+        if (cellType != null && cellType != LandType.WATER && cellType != LandType.NEST)
         {
-          occupied = mapManager.getOccupied(x-1, y-1);
-          if(!occupied)
+          occupied = mapManager.getOccupied(x - 1, y - 1);
+          if (!occupied)
           {
             validMove = true;
           }
         }
         break;
       case SOUTH:
-        cellType = mapManager.getLandType(x,y+1);
-        if(cellType != null && cellType != LandType.WATER && cellType != LandType.NEST)
+        cellType = mapManager.getLandType(x, y + 1);
+        if (cellType != null && cellType != LandType.WATER && cellType != LandType.NEST)
         {
-          occupied = mapManager.getOccupied(x, y+1);
-          if(!occupied)
+          occupied = mapManager.getOccupied(x, y + 1);
+          if (!occupied)
           {
             validMove = true;
           }
         }
         break;
       case SOUTHEAST:
-        cellType = mapManager.getLandType(x+1,y+1);
-        if(cellType != null && cellType != LandType.WATER && cellType != LandType.NEST)
+        cellType = mapManager.getLandType(x + 1, y + 1);
+        if (cellType != null && cellType != LandType.WATER && cellType != LandType.NEST)
         {
-          occupied = mapManager.getOccupied(x+1, y+1);
-          if(!occupied)
+          occupied = mapManager.getOccupied(x + 1, y + 1);
+          if (!occupied)
           {
             validMove = true;
           }
         }
         break;
       case SOUTHWEST:
-        cellType = mapManager.getLandType(x-1,y+1);
-        if(cellType != null && cellType != LandType.WATER && cellType != LandType.NEST)
+        cellType = mapManager.getLandType(x - 1, y + 1);
+        if (cellType != null && cellType != LandType.WATER && cellType != LandType.NEST)
         {
-          occupied = mapManager.getOccupied(x-1, y+1);
-          if(!occupied)
+          occupied = mapManager.getOccupied(x - 1, y + 1);
+          if (!occupied)
           {
             validMove = true;
           }
         }
         break;
       case EAST:
-        cellType = mapManager.getLandType(x+1,y);
-        if(cellType != null && cellType != LandType.WATER && cellType != LandType.NEST)
+        cellType = mapManager.getLandType(x + 1, y);
+        if (cellType != null && cellType != LandType.WATER && cellType != LandType.NEST)
         {
-          occupied = mapManager.getOccupied(x+1, y);
-          if(!occupied)
+          occupied = mapManager.getOccupied(x + 1, y);
+          if (!occupied)
           {
             validMove = true;
           }
         }
         break;
       case WEST:
-        cellType = mapManager.getLandType(x-1,y);
-        if(cellType != null && cellType != LandType.WATER && cellType != LandType.NEST)
+        cellType = mapManager.getLandType(x - 1, y);
+        if (cellType != null && cellType != LandType.WATER && cellType != LandType.NEST)
         {
-          occupied = mapManager.getOccupied(x-1, y);
-          if(!occupied)
+          occupied = mapManager.getOccupied(x - 1, y);
+          if (!occupied)
           {
             validMove = true;
           }
@@ -1217,11 +1189,11 @@ public class AntGroup
 
   private Direction getBestDirectionToEnemy(int x, int y)
   {
-    Direction heading = xyCoordinateToDirection(groupObjective.getObjectiveX(),groupObjective.getObjectiveY(),x,y);
+    Direction heading = Directions.xyCoordinateToDirection(groupObjective.getObjectiveX(), groupObjective.getObjectiveY(), x, y);
     int bestValSoFar;
 
     //verify that heading is a legal move (not into water/into occupied cell)
-    if(verifyHeading(x,y,heading))
+    if (verifyHeading(x, y, heading))
     {
       bestValSoFar = 0;
     }
@@ -1231,80 +1203,80 @@ public class AntGroup
     }
     Direction bestDirection = heading;
 
-    if(heading == Direction.NORTH || heading == Direction.NORTHEAST || heading == Direction.NORTHWEST)
+    if (heading == Direction.NORTH || heading == Direction.NORTHEAST || heading == Direction.NORTHWEST)
     {
-      int enemyValNorth = getAverageEnemyGradientVal(x,y,Direction.NORTH);
-      if(enemyValNorth > bestValSoFar)
+      int enemyValNorth = getAverageEnemyGradientVal(x, y, Direction.NORTH);
+      if (enemyValNorth > bestValSoFar)
       {
         bestValSoFar = enemyValNorth;
         bestDirection = Direction.NORTH;
       }
     }
 
-    if(heading == Direction.NORTH || heading == Direction.NORTHEAST || heading == Direction.EAST)
+    if (heading == Direction.NORTH || heading == Direction.NORTHEAST || heading == Direction.EAST)
     {
-      int enemyValNE = getAverageEnemyGradientVal(x,y,Direction.NORTHEAST);
-      if(enemyValNE > bestValSoFar)
+      int enemyValNE = getAverageEnemyGradientVal(x, y, Direction.NORTHEAST);
+      if (enemyValNE > bestValSoFar)
       {
         bestValSoFar = enemyValNE;
         bestDirection = Direction.NORTHEAST;
       }
     }
 
-    if(heading == Direction.NORTH || heading == Direction.NORTHWEST || heading == Direction.WEST)
+    if (heading == Direction.NORTH || heading == Direction.NORTHWEST || heading == Direction.WEST)
     {
-      int enemyValNW = getAverageEnemyGradientVal(x,y,Direction.NORTHWEST);
-      if(enemyValNW > bestValSoFar)
+      int enemyValNW = getAverageEnemyGradientVal(x, y, Direction.NORTHWEST);
+      if (enemyValNW > bestValSoFar)
       {
         bestValSoFar = enemyValNW;
         bestDirection = Direction.NORTHWEST;
       }
     }
 
-    if(heading == Direction.SOUTH || heading == Direction.SOUTHEAST || heading == Direction.SOUTHWEST)
+    if (heading == Direction.SOUTH || heading == Direction.SOUTHEAST || heading == Direction.SOUTHWEST)
     {
-      int enemyValSouth = getAverageEnemyGradientVal(x,y,Direction.SOUTH);
-      if(enemyValSouth > bestValSoFar)
+      int enemyValSouth = getAverageEnemyGradientVal(x, y, Direction.SOUTH);
+      if (enemyValSouth > bestValSoFar)
       {
         bestValSoFar = enemyValSouth;
         bestDirection = Direction.SOUTH;
       }
     }
 
-    if(heading == Direction.SOUTH || heading == Direction.SOUTHEAST || heading == Direction.EAST)
+    if (heading == Direction.SOUTH || heading == Direction.SOUTHEAST || heading == Direction.EAST)
     {
-      int enemyValSE = getAverageEnemyGradientVal(x,y,Direction.SOUTHEAST);
-      if(enemyValSE > bestValSoFar)
+      int enemyValSE = getAverageEnemyGradientVal(x, y, Direction.SOUTHEAST);
+      if (enemyValSE > bestValSoFar)
       {
         bestValSoFar = enemyValSE;
         bestDirection = Direction.SOUTHEAST;
       }
     }
 
-    if(heading == Direction.SOUTH || heading == Direction.SOUTHWEST || heading == Direction.WEST)
+    if (heading == Direction.SOUTH || heading == Direction.SOUTHWEST || heading == Direction.WEST)
     {
-      int enemyValSW = getAverageEnemyGradientVal(x,y,Direction.SOUTHWEST);
-      if(enemyValSW > bestValSoFar)
+      int enemyValSW = getAverageEnemyGradientVal(x, y, Direction.SOUTHWEST);
+      if (enemyValSW > bestValSoFar)
       {
         bestValSoFar = enemyValSW;
         bestDirection = Direction.SOUTHWEST;
       }
     }
 
-    if(heading == Direction.EAST || heading == Direction.NORTHEAST || heading == Direction.SOUTHEAST)
+    if (heading == Direction.EAST || heading == Direction.NORTHEAST || heading == Direction.SOUTHEAST)
     {
-      int enemyValEast = getAverageEnemyGradientVal(x,y,Direction.EAST);
-      if(enemyValEast > bestValSoFar)
+      int enemyValEast = getAverageEnemyGradientVal(x, y, Direction.EAST);
+      if (enemyValEast > bestValSoFar)
       {
         bestValSoFar = enemyValEast;
         bestDirection = Direction.EAST;
       }
     }
 
-    if(heading == Direction.WEST || heading == Direction.NORTHWEST || heading == Direction.NORTHEAST)
+    if (heading == Direction.WEST || heading == Direction.NORTHWEST || heading == Direction.NORTHEAST)
     {
-      int enemyValWest = getAverageEnemyGradientVal(x,y,Direction.WEST);
-      if(enemyValWest > bestValSoFar)
+      int enemyValWest = getAverageEnemyGradientVal(x, y, Direction.WEST);
+      if (enemyValWest > bestValSoFar)
       {
         bestValSoFar = enemyValWest;
         bestDirection = Direction.WEST;
@@ -1336,7 +1308,7 @@ public class AntGroup
     int enemyY = groupObjective.getObjectiveY();
     int antX = ant.gridX;
     int antY = ant.gridY;
-    Direction enemyDirection = xyCoordinateToDirection(enemyX,enemyY,antX,antY);
+    Direction enemyDirection = Directions.xyCoordinateToDirection(enemyX, enemyY, antX, antY);
 
     action.type = AntAction.AntActionType.ATTACK;
     action.direction = enemyDirection;
@@ -1347,7 +1319,7 @@ public class AntGroup
 
   boolean goToEnemyAnt(AntData ant, AntAction action)
   {
-    if(groupGoal != Goal.ATTACK)
+    if (groupGoal != Goal.ATTACK)
     {
       return false;
     }
@@ -1359,7 +1331,7 @@ public class AntGroup
 
     if (distanceToEnemyX <= 1 && distanceToEnemyY <= 1)  //Ant is adjacent to food, pick it up
     {
-      attackEnemyAnt(ant,action);
+      attackEnemyAnt(ant, action);
       return true;
     }
     else    //Follow enemy diffusion gradient
@@ -1378,13 +1350,13 @@ public class AntGroup
       return false;
     }
     System.err.println("GoToFood Ant: " + ant.toString() + " hasPath = " + hasPath + " : followGradient= " + followFoodGradient);
-    if(hasPath) //If the ant has a path, follow it
+    if (hasPath) //If the ant has a path, follow it
     {
       if (pathStepCount < path.getPath().size() - 1) //If the ant has not reached the end of the path
       {
         System.err.println("Ant: " + ant.toString() + " FOLLOWING PATH");
         action.type = AntAction.AntActionType.MOVE;
-        action.direction = xyCoordinateToDirection(path.getPath().get(pathStepCount).getX(), path.getPath().get(pathStepCount).getY(), ant.gridX, ant.gridY);
+        action.direction = Directions.xyCoordinateToDirection(path.getPath().get(pathStepCount).getX(), path.getPath().get(pathStepCount).getY(), ant.gridX, ant.gridY);
         pathStepCount++;
 
       }
@@ -1409,7 +1381,7 @@ public class AntGroup
 
       if (distanceToFoodX <= 5 && distanceToFoodY <= 5)  //Ant is adjacent to food, pick it up
       {
-        freeAntsFromOrders(Goal.GOTOFOODSITE,groupObjective);
+        freeAntsFromOrders(Goal.GOTOFOODSITE, groupObjective);
         //followFoodGradient = false;
         //pickUpFood(ant,action);
         return true;
@@ -1483,6 +1455,4 @@ public class AntGroup
     //mapManager.addAntStep(ant.gridX,ant.gridY,randomWalk);   //Used for testing
     return true;
   }
-
-
 }
