@@ -1,15 +1,13 @@
 package antworld.client;
 
-import antworld.client.navigation.MapManager;
-import antworld.client.navigation.NearestWaterPaths;
-import antworld.client.navigation.Path;
-import antworld.client.navigation.PathFinder;
+import antworld.client.navigation.*;
 import antworld.common.*;
 import antworld.server.Nest;
 
 import java.util.Random;
 
 /**
+ * @todo make a method which, if ant is stasis for a few ticks (stuck, possibly with another ant) make path to some other place
  * Created by mauricio on 11/23/16.
  */
 public class Ant
@@ -125,6 +123,7 @@ public class Ant
   //only called when ant's in the nest and will be true
   boolean dropFood(AntData ant, AntAction action)
   {
+    if (ant.carryType == FoodType.WATER) waterCarryCap -= ant.antType.getCarryCapacity();
     System.err.println("ant: " + antData.toString() + " Dropping food!");
     action.type = AntAction.AntActionType.DROP;
     action.quantity = ant.carryUnits;
@@ -249,7 +248,7 @@ public class Ant
           nextStepX = path.getPath().get(pathStepCount).getX();
           nextStepY = path.getPath().get(pathStepCount).getY();
         }
-        action.direction = xyCoordinateToDirection(nextStepX, nextStepY, ant.gridX, ant.gridY);
+        action.direction = Directions.xyCoordinateToDirection(nextStepX, nextStepY, ant.gridX, ant.gridY);
         action.type = AntAction.AntActionType.MOVE;
 
         //System.err.println("Ant : " + ant.id + " step Count = " + pathStepCount);
@@ -316,7 +315,7 @@ public class Ant
       action.type = AntAction.AntActionType.MOVE;
       if (path == waterPath && ant.carryUnits == 0)//going for water
       {
-        action.direction = xyCoordinateToDirection(path.getPath().get(h2oPathStepCount).getX(), path.getPath().get(h2oPathStepCount).getY(), ant.gridX, ant.gridY);
+        action.direction = Directions.xyCoordinateToDirection(path.getPath().get(h2oPathStepCount).getX(), path.getPath().get(h2oPathStepCount).getY(), ant.gridX, ant.gridY);
         System.err.println("ant @(" + antData.gridX + ", " + ant.gridY + ")" + "\npath @(" + path.getPath().get(h2oPathStepCount).getX() + ", " + path.getPath().get(h2oPathStepCount).getY() + ")");
         if (h2oPathStepCount == 0)
         {
@@ -346,7 +345,7 @@ public class Ant
     FoodObjective foodObjective = (FoodObjective) currentObjective;
     int foodLeft = foodObjective.getFoodLeft();
 
-    if(antData.carryUnits > 0 || foodLeft <= 0)
+    if (antData.carryUnits > 0 || foodLeft <= 0)
     {
       setCurrentGoal(Goal.RETURNTONEST);
       return;
@@ -356,7 +355,7 @@ public class Ant
     int foodY = currentObjective.getObjectiveY();
     int antX = antData.gridX;
     int antY = antData.gridY;
-    Direction foodDirection = xyCoordinateToDirection(foodX, foodY, antX, antY);
+    Direction foodDirection = Directions.xyCoordinateToDirection(foodX, foodY, antX, antY);
 
     action.type = AntAction.AntActionType.PICKUP;
     action.direction = foodDirection;
@@ -365,21 +364,6 @@ public class Ant
     System.err.println("Ant: " + antData.toString() + " : PICKING UP FOOD : foodLeft = " + foodObjective.getFoodLeft());
 
   }
-
-  private Direction xyCoordinateToDirection(int nextX, int nextY, int antX, int antY)
-  {
-    if (nextX == antX && nextY < antY) return Direction.NORTH;
-    if (nextX > antX && nextY < antY) return Direction.NORTHEAST;
-    if (nextX > antX && nextY == antY) return Direction.EAST;
-    if (nextX > antX && nextY > antY) return Direction.SOUTHEAST;
-    if (nextX == antX && nextY > antY) return Direction.SOUTH;
-    if (nextX < antX && nextY > antY) return Direction.SOUTHWEST;
-    if (nextX < antX && nextY == antY) return Direction.WEST;
-    if (nextX < antX && nextY < antY) return Direction.NORTHWEST;
-    //System.err.println("NO DIRECTION!! nextX= " + nextX + " nextY= " + nextY + " antX=" + antX + " antY=" + antY);
-    return null;
-  }
-
   /*
   //Samples two points in the given direction and returns the average exploration value
   //Maybe the average should also consider the cells directly around the ant instead of just around the radius of sight.
@@ -583,7 +567,7 @@ public class Ant
 
   private Direction getBestDirectionToFood(int x, int y)
   {
-    Direction heading = xyCoordinateToDirection(currentObjective.getObjectiveX(),currentObjective.getObjectiveY(),x,y);
+    Direction heading = Directions.xyCoordinateToDirection(currentObjective.getObjectiveX(), currentObjective.getObjectiveY(), x, y);
     int bestValSoFar = 0;
     Direction bestDirection = heading;
 
@@ -671,7 +655,7 @@ public class Ant
     if(bestValSoFar == 0) //If no direction is good, get a general heading and go in that direction
     {
       //System.err.println("DEAD RECKONING...");
-      //bestDirection = xyCoordinateToDirection(foodObjective.getObjectiveX(),foodObjective.getObjectiveY(),x,y);
+      //bestDirection =Directions.xyCoordinateToDirection(foodObjective.getObjectiveX(),foodObjective.getObjectiveY(),x,y);
       //System.exit(3);
     }
     //lastFoodGradientVal = bestValSoFar;
@@ -913,7 +897,7 @@ public class Ant
 
   private Direction getBestDirectionToEnemy(int x, int y)
   {
-    Direction heading = xyCoordinateToDirection(currentObjective.getObjectiveX(),currentObjective.getObjectiveY(),x,y);
+    Direction heading = Directions.xyCoordinateToDirection(currentObjective.getObjectiveX(), currentObjective.getObjectiveY(), x, y);
     int bestValSoFar;
 
     //verify that heading is a legal move (not into water/into occupied cell)
@@ -1061,7 +1045,7 @@ public class Ant
     int enemyY = currentObjective.getObjectiveY();
     int antX = antData.gridX;
     int antY = antData.gridY;
-    Direction enemyDirection = xyCoordinateToDirection(enemyX,enemyY,antX,antY);
+    Direction enemyDirection = Directions.xyCoordinateToDirection(enemyX, enemyY, antX, antY);
 
     action.type = AntAction.AntActionType.ATTACK;
     action.direction = enemyDirection;
@@ -1109,7 +1093,7 @@ public class Ant
       {
         //System.err.println("Ant: " + antData.toString() + " FOLLOWING PATH");
         action.type = AntAction.AntActionType.MOVE;
-        action.direction = xyCoordinateToDirection(path.getPath().get(pathStepCount).getX(), path.getPath().get(pathStepCount).getY(), ant.gridX, ant.gridY);
+        action.direction = Directions.xyCoordinateToDirection(path.getPath().get(pathStepCount).getX(), path.getPath().get(pathStepCount).getY(), ant.gridX, ant.gridY);
         pathStepCount++;
 
       }

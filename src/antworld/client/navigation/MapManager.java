@@ -45,8 +45,10 @@ public class MapManager
   private static final int ENEMYFADEVAL = 30;
   private DiffusionGradient explorationGradient;
   private DiffusionGradient foodGradient;
+  private DiffusionGradient waterGradient;
   private DiffusionGradient pathStartGradient;
   private DiffusionGradient enemyGradient;
+  private DiffusionGradient enemyNestGradient;//@todo need to find which nest is closest to which to initialize this
   private HashSet<MapCell> exploredRecently;
   private LinkedList<Coordinate> occupiedRecently;
   private HashSet<MapCell> hostileRecently;
@@ -61,10 +63,12 @@ public class MapManager
     exploredRecently = new HashSet<>();
     occupiedRecently = new LinkedList<>();
     hostileRecently = new HashSet<>();
-    explorationGradient = new DiffusionGradient(EXPLORATIONRADIUS,EXPLORATIONVALUE,DIFFUSIONCOEFFICIENT);
+    explorationGradient = new DiffusionGradient(EXPLORATIONRADIUS, EXPLORATIONVALUE, DIFFUSIONCOEFFICIENT);
     foodGradient = new DiffusionGradient(FOODRADIUS, FOODVALUE, DIFFUSIONCOEFFICIENT);
-    pathStartGradient = new DiffusionGradient(PATHSTARTRADIUS,PATHSTARTVALUE,DIFFUSIONCOEFFICIENT);
-    enemyGradient = new DiffusionGradient(ENEMYRADIUS,ENEMYVALUE,DIFFUSIONCOEFFICIENT);
+    waterGradient = new DiffusionGradient(FOODRADIUS, FOODVALUE, DIFFUSIONCOEFFICIENT);
+    pathStartGradient = new DiffusionGradient(PATHSTARTRADIUS, PATHSTARTVALUE, DIFFUSIONCOEFFICIENT);
+    enemyNestGradient = new DiffusionGradient(30, 1000, DIFFUSIONCOEFFICIENT);
+    enemyGradient = new DiffusionGradient(ENEMYRADIUS, ENEMYVALUE, DIFFUSIONCOEFFICIENT);
     //drawMap();  //Used for testing
   }
 
@@ -122,7 +126,7 @@ public class MapManager
         // ", landType="+landType
         // +" height="+height);
         world[x][y] = new MapCell(landType, height, x, y);
-        geoMap[x][y] = new Cell(landType,height,x,y);
+        geoMap[x][y] = new Cell(landType, height, x, y);
       }
     }
   }
@@ -148,20 +152,21 @@ public class MapManager
     synchronized (world)
     {
       System.out.println("FOOD MAP:*****************************************************************************************************************************");
-      for(int j=0;j<mapHeight;j++)
+      for (int j = 0; j < mapHeight; j++)
       {
-        for(int cellLine=0; cellLine < 4; cellLine ++)
+        for (int cellLine = 0; cellLine < 4; cellLine++)
         {
-          for(int i=0;i<mapWidth;i++) {
+          for (int i = 0; i < mapWidth; i++)
+          {
 
-            if(world[i][j].getLandType()!= LandType.WATER)
+            if (world[i][j].getLandType() != LandType.WATER)
             {
-              if(cellLine == 0) //Print food val
+              if (cellLine == 0) //Print food val
               {
                 nextVal = world[i][j].getFoodProximityVal();
-                if(nextVal == 0)
+                if (nextVal == 0)
                 {
-                  if(world[i][j].getOccupied())
+                  if (world[i][j].getOccupied())
                   {
                     System.out.print("*@@*|");
                   }
@@ -171,15 +176,15 @@ public class MapManager
                   }
 
                 }
-                else if(nextVal < 10)  //1 digit number
+                else if (nextVal < 10)  //1 digit number
                 {
                   System.out.print("..." + nextVal + "|");
                 }
-                else if(nextVal < 100) //2 digit number
+                else if (nextVal < 100) //2 digit number
                 {
                   System.out.print(".." + nextVal + "|");
                 }
-                else if(nextVal < 1000) //3 digit number
+                else if (nextVal < 1000) //3 digit number
                 {
                   System.out.print("." + nextVal + "|");
                 }
@@ -188,22 +193,22 @@ public class MapManager
                   System.out.print(nextVal + "|");
                 }
               }
-              else if(cellLine == 1) // print X coord
+              else if (cellLine == 1) // print X coord
               {
                 nextVal = i;
-                if(nextVal == 0)
+                if (nextVal == 0)
                 {
                   System.out.print("...0|");
                 }
-                else if(nextVal < 10)  //1 digit number
+                else if (nextVal < 10)  //1 digit number
                 {
                   System.out.print("..." + nextVal + "|");
                 }
-                else if(nextVal < 100) //2 digit number
+                else if (nextVal < 100) //2 digit number
                 {
                   System.out.print(".." + nextVal + "|");
                 }
-                else if(nextVal < 1000) //3 digit number
+                else if (nextVal < 1000) //3 digit number
                 {
                   System.out.print("." + nextVal + "|");
                 }
@@ -212,22 +217,22 @@ public class MapManager
                   System.out.print(nextVal + "|");
                 }
               }
-              else if(cellLine == 2) // print y coord
+              else if (cellLine == 2) // print y coord
               {
                 nextVal = j;
-                if(nextVal == 0)
+                if (nextVal == 0)
                 {
                   System.out.print("...0|");
                 }
-                else if(nextVal < 10)  //1 digit number
+                else if (nextVal < 10)  //1 digit number
                 {
                   System.out.print("..." + nextVal + "|");
                 }
-                else if(nextVal < 100) //2 digit number
+                else if (nextVal < 100) //2 digit number
                 {
                   System.out.print(".." + nextVal + "|");
                 }
-                else if(nextVal < 1000) //3 digit number
+                else if (nextVal < 1000) //3 digit number
                 {
                   System.out.print("." + nextVal + "|");
                 }
@@ -236,7 +241,7 @@ public class MapManager
                   System.out.print(nextVal + "|");
                 }
               }
-              else if(cellLine == 3)  //Print bottom
+              else if (cellLine == 3)  //Print bottom
               {
                 System.out.print("....|");
               }
@@ -258,14 +263,14 @@ public class MapManager
     synchronized (world)
     {
 
-      for(Iterator<MapCell> i = hostileRecently.iterator(); i.hasNext();)
+      for (Iterator<MapCell> i = hostileRecently.iterator(); i.hasNext(); )
       {
         MapCell nextCell = i.next();
         int currentVal = nextCell.getEnemyVal();
-        if(currentVal > 0) //1000-15 = 985
+        if (currentVal > 0) //1000-15 = 985
         {
           currentVal -= ENEMYFADEVAL;
-          if(currentVal < 0)
+          if (currentVal < 0)
           {
             currentVal = 0;
           }
@@ -281,39 +286,44 @@ public class MapManager
 
   public void updateEnemyAntGradient(int enemyX, int enemyY)
   {
-    writeGradientToMap(enemyX,enemyY,ENEMYRADIUS,enemyGradient.getGradient(),GradientType.ENEMY);
+    writeGradientToMap(enemyX, enemyY, ENEMYRADIUS, enemyGradient.getGradient(), GradientType.ENEMY);
   }
 
   public void createPathStartGradient(int pathStartX, int pathStartY)
   {
-    writeGradientToMap(pathStartX, pathStartY, PATHSTARTRADIUS, pathStartGradient.getGradient(),GradientType.PATH);
+    writeGradientToMap(pathStartX, pathStartY, PATHSTARTRADIUS, pathStartGradient.getGradient(), GradientType.PATH);
+  }
+
+  public void createWaterProximityGradient(int waterX, int waterY)
+  {
+    writeGradientToMap(waterX, waterY, FOODRADIUS, waterGradient.getGradient(), GradientType.FOOD);
   }
 
   public void removePathProximityGradient(int x, int y)
   {
     System.err.println("ERASING PATH GRADIENT");
-    eraseGradientFromMap(x,y,PATHSTARTRADIUS,GradientType.PATH);
+    eraseGradientFromMap(x, y, PATHSTARTRADIUS, GradientType.PATH);
   }
 
   public void updateCellFoodProximity(int foodX, int foodY)
   {
-    writeGradientToMap(foodX,foodY,FOODRADIUS,foodGradient.getGradient(),GradientType.FOOD);
+    writeGradientToMap(foodX, foodY, FOODRADIUS, foodGradient.getGradient(), GradientType.FOOD);
   }
 
   public void removeFoodProximityGradient(int foodX, int foodY)
   {
     System.err.println("ERASING FOOD GRADIENT");
-    eraseGradientFromMap(foodX,foodY,FOODRADIUS,GradientType.FOOD);
+    eraseGradientFromMap(foodX, foodY, FOODRADIUS, GradientType.FOOD);
   }
 
   public void updateCellExploration(int explorerX, int explorerY)
   {
-    writeGradientToMap(explorerX,explorerY,EXPLORATIONRADIUS,explorationGradient.getGradient(),GradientType.EXPLORE);
+    writeGradientToMap(explorerX, explorerY, EXPLORATIONRADIUS, explorationGradient.getGradient(), GradientType.EXPLORE);
   }
 
   public int getFoodProximityVal(int x, int y)
   {
-    if(x < 0 || x >= mapWidth || y < 0 || y >= mapHeight)
+    if (x < 0 || x >= mapWidth || y < 0 || y >= mapHeight)
     {
       return 0;
     }
@@ -326,7 +336,7 @@ public class MapManager
 
   public int getExplorationVal(int x, int y)
   {
-    if(x < 0 || x >= mapWidth || y < 0 || y >= mapHeight)
+    if (x < 0 || x >= mapWidth || y < 0 || y >= mapHeight)
     {
       return 0;
     }
@@ -339,7 +349,7 @@ public class MapManager
 
   public int getPathProximityVal(int x, int y)
   {
-    if(x < 0 || x >= mapWidth || y < 0 || y >= mapHeight)
+    if (x < 0 || x >= mapWidth || y < 0 || y >= mapHeight)
     {
       return 0;
     }
@@ -352,7 +362,7 @@ public class MapManager
 
   public int getEnemyProximityVal(int x, int y)
   {
-    if(x < 0 || x >= mapWidth || y < 0 || y >= mapHeight)
+    if (x < 0 || x >= mapWidth || y < 0 || y >= mapHeight)
     {
       return 0;
     }
@@ -365,7 +375,7 @@ public class MapManager
 
   public LandType getLandType(int x, int y)
   {
-    if(x < 0 || x >= mapWidth || y < 0 || y >= mapHeight)
+    if (x < 0 || x >= mapWidth || y < 0 || y >= mapHeight)
     {
       return null;
     }
@@ -378,7 +388,7 @@ public class MapManager
 
   public boolean getOccupied(int x, int y)
   {
-    if(x < 0 || x >= mapWidth || y < 0 || y >= mapHeight)
+    if (x < 0 || x >= mapWidth || y < 0 || y >= mapHeight)
     {
       return true;  //Return true if out of bounds so that nothing tries to go there.
     }
@@ -392,18 +402,18 @@ public class MapManager
   //Regenerates the exploration value of MapCells that have been explored recently
   public void regenerateExplorationVals()   //Call every frame
   {
-    if(exploredRecently.size() > 0)
+    if (exploredRecently.size() > 0)
     {
       synchronized (world)
       {
 
-        for(Iterator<MapCell> i = exploredRecently.iterator(); i.hasNext();)
+        for (Iterator<MapCell> i = exploredRecently.iterator(); i.hasNext(); )
         {
           MapCell nextCell = i.next();
           int currentVal = nextCell.getExplorationVal();
-          if(currentVal < (EXPLORATIONVALUE-EXPLORATIONREGENVAL)) //1000-15 = 985
+          if (currentVal < (EXPLORATIONVALUE - EXPLORATIONREGENVAL)) //1000-15 = 985
           {
-            nextCell.setExplorationVal(currentVal+EXPLORATIONREGENVAL);
+            nextCell.setExplorationVal(currentVal + EXPLORATIONREGENVAL);
           }
           else  //Else cell has regenerated, remove it.
           {
@@ -419,7 +429,7 @@ public class MapManager
     resetOccupiedCells(); //Set the cells occupied last tick to false
     synchronized (world)
     {
-      for(Coordinate nextCoord : antLocations)
+      for (Coordinate nextCoord : antLocations)
       {
         world[nextCoord.getX()][nextCoord.getY()].setOccupied(true);
       }
@@ -429,11 +439,11 @@ public class MapManager
 
   private void resetOccupiedCells()
   {
-    if(occupiedRecently.size() > 0)
+    if (occupiedRecently.size() > 0)
     {
       synchronized (world)
       {
-        for(Coordinate nextCoord : occupiedRecently)
+        for (Coordinate nextCoord : occupiedRecently)
         {
           world[nextCoord.getX()][nextCoord.getY()].setOccupied(false);
         }
@@ -443,53 +453,69 @@ public class MapManager
 
   /**
    * Writes the diffusion gradient to the map by updating cells with a new food proximity value
-   * @param x - target x coord of center of gradient
-   * @param y - target y coord of center of gradient
-   * @param radius - the radius of the diffusion gradient
+   *
+   * @param x               - target x coord of center of gradient
+   * @param y               - target y coord of center of gradient
+   * @param radius          - the radius of the diffusion gradient
    * @param diffusionValues - the array of diffusion values
    */
-  private void writeGradientToMap(int x, int y, int radius, int[][] diffusionValues,GradientType type) {
-
-    synchronized (world) {
-      int diameter = (radius*2) +1;
+  private void writeGradientToMap(int x, int y, int radius, int[][] diffusionValues, GradientType type)
+  {
+    synchronized (world)
+    {
+      int diameter = (radius * 2) + 1;
       int nextX;
       int nextY;
       int nextVal;
 
-      for (int i = 0; i < diameter; i++) {
+      for (int i = 0; i < diameter; i++)
+      {
 
-        if (i < radius) {
+        if (i < radius)
+        {
           nextX = x - (radius - i);
-        } else if (i > radius) {
+        }
+        else if (i > radius)
+        {
           nextX = x + (i - radius);
-        } else {
+        }
+        else
+        {
           nextX = x;
         }
 
-        for (int j = 0; j < diameter; j++) {
+        for (int j = 0; j < diameter; j++)
+        {
 
 
-          if (j < radius) {
+          if (j < radius)
+          {
             nextY = y - (radius - j);
-          } else if (j > radius) {
+          }
+          else if (j > radius)
+          {
             nextY = y + (j - radius);
-          } else {
+          }
+          else
+          {
             nextY = y;
           }
 
-          if (nextX < 0 || nextX >= mapWidth || nextY < 0 || nextY >= mapHeight) {
+          if (nextX < 0 || nextX >= mapWidth || nextY < 0 || nextY >= mapHeight)
+          {
             //System.err.println("INDEX OUT OF BOUND!");
             continue;
           }
 
           nextVal = diffusionValues[i][j];
 
-          if(world[nextX][nextY].getLandType() != LandType.WATER) //If this is not a water cell
+          if (world[nextX][nextY].getLandType() != LandType.WATER) //If this is not a water cell
           {
-            switch (type) {
+            switch (type)
+            {
               case FOOD:
                 int currentVal = world[nextX][nextY].getFoodProximityVal(); //This prevents gradients from overlapping when food sites are close
-                if(nextVal > currentVal)  //Only update this cell if the next gradient value is higher than the cells current value
+                if (nextVal > currentVal)  //Only update this cell if the next gradient value is higher than the cells current value
                 {
                   world[nextX][nextY].setFoodProximityVal(nextVal);
                 }
@@ -498,7 +524,8 @@ public class MapManager
                 exploredRecently.add(world[nextX][nextY]);  //Add the new cell to exploredRecently to regenerate its exploration over time
                 nextVal *= EXPLORE.polarity();
                 nextVal = world[nextX][nextY].getExplorationVal() + nextVal;
-                if (nextVal < 0) {
+                if (nextVal < 0)
+                {
                   nextVal = 0;
                 }
                 world[nextX][nextY].setExplorationVal(nextVal);
@@ -508,7 +535,7 @@ public class MapManager
                 break;
               case ENEMY:
                 int currentEnemyVal = world[nextX][nextY].getEnemyVal();
-                if(nextVal > currentEnemyVal)
+                if (nextVal > currentEnemyVal)
                 {
                   hostileRecently.add(world[nextX][nextY]);
                   world[nextX][nextY].setEnemyVal(nextVal);
@@ -523,40 +550,55 @@ public class MapManager
 
   private void eraseGradientFromMap(int x, int y, int radius, GradientType type)
   {
-    synchronized (world) {
-      int diameter = (radius*2) +1;
+    synchronized (world)
+    {
+      int diameter = (radius * 2) + 1;
       int nextX;
       int nextY;
 
-      for (int i = 0; i < diameter; i++) {
+      for (int i = 0; i < diameter; i++)
+      {
 
-        if (i < radius) {
+        if (i < radius)
+        {
           nextX = x - (radius - i);
-        } else if (i > radius) {
+        }
+        else if (i > radius)
+        {
           nextX = x + (i - radius);
-        } else {
+        }
+        else
+        {
           nextX = x;
         }
 
-        for (int j = 0; j < diameter; j++) {
+        for (int j = 0; j < diameter; j++)
+        {
 
 
-          if (j < radius) {
+          if (j < radius)
+          {
             nextY = y - (radius - j);
-          } else if (j > radius) {
+          }
+          else if (j > radius)
+          {
             nextY = y + (j - radius);
-          } else {
+          }
+          else
+          {
             nextY = y;
           }
 
-          if (nextX < 0 || nextX >= mapWidth || nextY < 0 || nextY >= mapHeight) {
+          if (nextX < 0 || nextX >= mapWidth || nextY < 0 || nextY >= mapHeight)
+          {
             //System.err.println("INDEX OUT OF BOUND!");
             continue;
           }
 
-          if(world[nextX][nextY].getLandType() != LandType.WATER) //If this is not a water cell
+          if (world[nextX][nextY].getLandType() != LandType.WATER) //If this is not a water cell
           {
-            switch (type) {
+            switch (type)
+            {
               case FOOD:
                 world[nextX][nextY].setFoodProximityVal(0);
                 break;
@@ -579,6 +621,7 @@ public class MapManager
     int x;
     int y;
     boolean random;
+
     public AntStep(int x, int y, boolean random)
     {
       this.x = x;
@@ -590,9 +633,9 @@ public class MapManager
   //Used for testing exploration
   public void addAntStep(int x, int y, boolean random)
   {
-    AntStep newStep = new AntStep(x,y,random);
+    AntStep newStep = new AntStep(x, y, random);
     antSteps.add(newStep);
-    if(antSteps.size()>6000)
+    if (antSteps.size() > 6000)
     {
       drawAntPath();
     }
@@ -604,26 +647,28 @@ public class MapManager
     System.out.println("Drawing Ant Path Map:");
     BufferedImage pathMap = new BufferedImage(mapWidth, mapHeight, BufferedImage.TYPE_INT_ARGB);
     AntStep nextStep;
-    Color random = new Color(255,0,0,255);
-    Color explore = new Color(0,0,255,255);
+    Color random = new Color(255, 0, 0, 255);
+    Color explore = new Color(0, 0, 255, 255);
 
     for (int i = 0; i < antSteps.size(); i++)
     {
       nextStep = antSteps.get(i);
 
-      if(nextStep.random)
+      if (nextStep.random)
       {
-        pathMap.setRGB(nextStep.x,nextStep.y,random.getRGB());
+        pathMap.setRGB(nextStep.x, nextStep.y, random.getRGB());
       }
       else
       {
-        pathMap.setRGB(nextStep.x,nextStep.y,explore.getRGB());
+        pathMap.setRGB(nextStep.x, nextStep.y, explore.getRGB());
       }
     }
     try
     {
-      ImageIO.write(pathMap,"PNG",new File("c:\\Users\\John\\Desktop\\antWorldTest\\antPathMap4.PNG"));
-    } catch (IOException ie){
+      ImageIO.write(pathMap, "PNG", new File("c:\\Users\\John\\Desktop\\antWorldTest\\antPathMap4.PNG"));
+    }
+    catch (IOException ie)
+    {
       ie.printStackTrace();
     }
     System.exit(2);
@@ -636,33 +681,35 @@ public class MapManager
     BufferedImage gradientMap = new BufferedImage(mapWidth, mapHeight, BufferedImage.TYPE_INT_ARGB);
     Color nextColor;
     LandType nextLandType;
-    Color grass = new Color(0,255,0,255);
-    Color water = new Color(0,0,255,255);
-    Color nest = new Color(255,255,0,255);
+    Color grass = new Color(0, 255, 0, 255);
+    Color water = new Color(0, 0, 255, 255);
+    Color nest = new Color(255, 255, 0, 255);
 
     for (int i = 0; i < mapWidth; i++)
     {
-      for(int j=0;j<mapHeight;j++)
+      for (int j = 0; j < mapHeight; j++)
       {
         nextLandType = world[i][j].getLandType();
-        switch(nextLandType)
+        switch (nextLandType)
         {
           case WATER:
-            gradientMap.setRGB(i,j,water.getRGB());
+            gradientMap.setRGB(i, j, water.getRGB());
             break;
           case NEST:
-            gradientMap.setRGB(i,j,nest.getRGB());
+            gradientMap.setRGB(i, j, nest.getRGB());
             break;
           case GRASS:
-            gradientMap.setRGB(i,j,grass.getRGB());
+            gradientMap.setRGB(i, j, grass.getRGB());
             break;
         }
       }
     }
     try
     {
-      ImageIO.write(gradientMap,"PNG",new File("c:\\Users\\John\\Desktop\\antWorldTest\\drawMapTest0.PNG"));
-    } catch (IOException ie){
+      ImageIO.write(gradientMap, "PNG", new File("c:\\Users\\John\\Desktop\\antWorldTest\\drawMapTest0.PNG"));
+    }
+    catch (IOException ie)
+    {
       ie.printStackTrace();
     }
   }
