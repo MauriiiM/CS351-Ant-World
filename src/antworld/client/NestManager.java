@@ -8,12 +8,10 @@ import antworld.common.CommData;
 import antworld.common.FoodData;
 import antworld.common.*;
 import antworld.server.Cell;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
-
 import static antworld.common.FoodType.MEAT;
 import static antworld.common.FoodType.NECTAR;
 
@@ -23,6 +21,8 @@ import static antworld.common.FoodType.NECTAR;
  */
 public class NestManager
 {
+  public static int NESTX;
+  public static int NESTY;
   private Client client;
   private CommData commData;
   private final String mapFilePath; //"resources/AntTestWorldDiffusion.png"
@@ -33,6 +33,7 @@ public class NestManager
   private HashMap<Integer, AntGroup> groupMap;
   private Ant ant;
   private Cell[][] geoMap;
+  public static PathFinder pathFinder;
 
   NestManager(Client client, String mapFilePath)
   {

@@ -30,7 +30,7 @@ public class Client
     isConnected = openConnection(host, portNumber);
     if (!isConnected) System.exit(0);
     CommData data = obtainNest();
-    NestManager.NEST_NAME = data.myNest.name();
+    //NestManager.NEST_NAME = data.myNest.name();
     mainGameLoop(data);
     closeAll();
   }
@@ -154,7 +154,7 @@ public class Client
       try
       {
 //        if (DEBUG) System.out.println("Client: chooseActions: " + myNestName);
-        nestManager.setCommData(data);
+        //nestManager.setCommData(data);
         nestManager.chooseActionsOfAllAnts(data);   //Send the commData to the nest manager to work with
         CommData sendData = data.packageForSendToServer();  //Send the commData back to the server once the nest manager is done
 
