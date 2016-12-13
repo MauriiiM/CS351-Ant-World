@@ -21,7 +21,7 @@ public class FoodManager extends Thread
   private FoodData[] serverFoodSetCopy;
   private PriorityQueue<FoodObjective> unprocessedFoodObjectives;
   private PathFinder pathFinder;
-  private final int OPTIMALCARRYCAPACITY = 24;  //The optimal amount of food for an ant to carry to the nest
+  public static final int OPTIMALCARRYCAPACITY = 25;  //The optimal amount of food for an ant to carry to the nest
   private final int FOODGRADIENTRADIUS = 30;    //The radius of food gradients
   private final int FOODGRADIENTHYPOTENUSE = (FOODGRADIENTRADIUS*2)/3;  //The hypotenuse for distance calculations 3/2 approx = sqrt(2)
   private final int FOODRESPONSEBUFFER = 400;  //How much of a buffer should be added when calculated the max food response. Ex: 10 cell radius past nest
@@ -94,7 +94,6 @@ public class FoodManager extends Thread
 
             if (nextStoredSite.getAllocatedAnts().size() == 0)
             {
-              //System.exit(3);
               iterator.remove();
               mapManager.removeFoodProximityGradient(storedSiteX, storedSiteY);
               Coordinate pathToNestStart = nextStoredSite.getPathToNest().getPathStart();

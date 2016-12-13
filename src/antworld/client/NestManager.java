@@ -177,11 +177,6 @@ public class NestManager
 
     int[] foodStockPile = commData.foodStockPile;
 
-    for(int i=0;i<foodStockPile.length;i++)
-    {
-      System.out.println("stockPile[" + i + "]= " + foodStockPile[i]);
-    }
-
     if(foodStockPile[MEAT.ordinal()] >= 20)
     {
       AntData newAnt1 = new AntData(Constants.UNKNOWN_ANT_ID,AntType.ATTACK,client.myNestName,client.myTeam);
@@ -197,77 +192,5 @@ public class NestManager
       commData.myAntList.add(newAnt1);
       commData.myAntList.add(newAnt2);
     }
-
-    /*
-    Ant nextAnt;
-    AntData nextAntData;
-    for (Integer id : antMap.keySet())
-    {
-      nextAnt = antMap.get(id);
-      nextAntData = nextAnt.getAntData();
-      mapManager.updateCellExploration(nextAntData.gridX, nextAntData.gridY);
-
-      if (commData.gameTick % 5000 == 0 && nextAnt.getCurrentGoal() == Goal.EXPLORE) //If the ant is out exploring, check attrition damage to see if it should head to nest
-      {
-        nextAnt.setCheckAttritionDamage(true);
-      }
-
-      Goal currentGoal = antMap.get(id).getCurrentGoal();
-      if(currentGoal == Goal.EXPLORE)
-      {
-      }
-      else if(currentGoal == Goal.GOTOFOODSITE)
-      {
-      }
-      else if(currentGoal == Goal.RETURNTONEST)
-      {
-      }
-
-      AntAction action = chooseAction(commData, nextAntData);
-      nextAntData.myAction = action;
-    }
-    */
-
-    //Used for testing food gradient write/erase
-    /*
-    if(commData.gameTick%600==0)
-    {
-      System.out.println("GAME TICK = " + commData.gameTick);
-      //mapManager.printFoodMap();
-    }
-    */
   }
-
-  /*
-  private AntAction chooseAction(CommData data, AntData ant)
-  {
-    AntAction action = new AntAction(AntAction.AntActionType.STASIS);
-    this.ant = antMap.get(ant.id);
-
-    if (!this.ant.completedLastAction) //If it did not complete it's last action, resend
-    {
-      return this.ant.getAntData().myAction;
-    }
-
-    if (ant.ticksUntilNextAction > 0) return action;
-
-    if (this.ant.exitNest(ant, action, data)) return action;
-
-    //if (this.ant.attackEnemyAnt(ant, action)) return action;
-
-    if (this.ant.isFollowingPath(ant, action)) return action;
-
-    if (this.ant.goToNest(ant, action)) return action;
-
-    if (this.ant.goToEnemyAnt(ant, action)) return action;
-
-    if (this.ant.goToFood(ant, action)) return action;
-
-    if (this.ant.goToGoodAnt(ant, action)) return action;
-
-    if (this.ant.goExplore(ant, action)) return action;
-    this.ant.getAntData().myAction = action;
-    return action;
-  }
-  */
 }

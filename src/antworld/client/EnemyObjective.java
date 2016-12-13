@@ -67,7 +67,10 @@ public class EnemyObjective extends Objective
     if(enemyHealth < 0)
     {
       //allocatedGroup.setGroupObjective(null);
-      allocatedGroup.setGroupGoal(Goal.EXPLORE);
+      if(allocatedGroup != null)
+      {
+        allocatedGroup.setGroupGoal(Goal.EXPLORE);
+      }
       targeted = false;
       completed = true;
     }

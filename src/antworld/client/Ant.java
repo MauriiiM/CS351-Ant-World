@@ -47,7 +47,8 @@ public class Ant
 
   public void setAntData(AntData newData)
   {
-    if(this.antGroup != null && !this.antGroup.followOrdered) {
+    if(this.antGroup != null && !this.antGroup.followOrdered)
+    {
       //Verify antData from server matches old antData indicating that the last action was completed.
       if (newData.myAction.type == this.antData.myAction.type || currentGoal == Goal.ATTACK) {
         this.antData = newData;
@@ -57,16 +58,13 @@ public class Ant
       {
         if(antData.myAction.type == AntAction.AntActionType.ATTACK)
         {
-          System.err.println("SHOULD NOT BE ATTACKING");
           this.antData = newData;
         }
         newData.myAction = this.antData.myAction;
         this.antData = newData;
-//        System.err.println("DONT ATTACK: " + this.antData.toString());
         completedLastAction = false;
       }
     }
-
     else
     {
       this.antData = newData;
@@ -120,7 +118,6 @@ public class Ant
   boolean dropFood(AntData ant, AntAction action)
   {
     if (ant.carryType == FoodType.WATER) antGroup.updateAntsCarryingWater(-ant.antType.getCarryCapacity());
-//    System.err.println("ant: " + antData.toString() + " Dropping food!");
     action.type = AntAction.AntActionType.DROP;
     action.quantity = ant.carryUnits;
     return true;
@@ -210,7 +207,7 @@ public class Ant
       {
         int deltaX = Math.abs(centerX - antData.gridX);
         int deltaY = Math.abs(centerY - antData.gridY);
-        if ((deltaX + deltaY) <= 20)  //If the ant is less than 20 cells away from the center of the nest, it must be on the nest.
+        if ((deltaX + deltaY) <= 19)  //If the ant is less than 20 cells away from the center of the nest, it must be on the nest.
         {
           action.type = enterNest();
           endPath();
@@ -272,10 +269,7 @@ public class Ant
     {
       foodObjective = (FoodObjective) currentObjective;
     }
-    else
-    {
-      System.exit(3); //Something has gone wrong.
-    }
+
     Path pathToNest = foodObjective.getPathToNest();
     int distanceToPathStartX = Math.abs(antData.gridX - pathToNest.getPathStart().getX());
     int distanceToPathStartY = Math.abs(antData.gridY - pathToNest.getPathStart().getY());
@@ -292,7 +286,6 @@ public class Ant
         action.direction = Directions.xyCoordinateToDirection(path.getPath().get(h2oPathStepCount).getX(), path.getPath().get(h2oPathStepCount).getY(), ant.gridX, ant.gridY);
         if (h2oPathStepCount == 0)
         {
-          System.err.println("PICKUP WATER");
           action.type = AntAction.AntActionType.PICKUP;
           action.quantity = ant.antType.getCarryCapacity() - 1;
           return true;
@@ -336,8 +329,8 @@ public class Ant
 
     action.type = AntAction.AntActionType.PICKUP;
     action.direction = foodDirection;
-    action.quantity = antData.antType.getCarryCapacity() - 1;
-    foodObjective.reduceFoodLeft(antData.antType.getCarryCapacity() - 1);
+    action.quantity = antData.antType.getCarryCapacity()/2;
+    foodObjective.reduceFoodLeft(antData.antType.getCarryCapacity()/2);
 
   }
   /*
@@ -627,12 +620,6 @@ public class Ant
       }
     }
 
-    if(bestValSoFar == 0) //If no direction is good, get a general heading and go in that direction
-    {
-      //bestDirection =Directions.xyCoordinateToDirection(foodObjective.getObjectiveX(),foodObjective.getObjectiveY(),x,y);
-      //System.exit(3);
-    }
-    //lastFoodGradientVal = bestValSoFar;
     return bestDirection;
   }
 
@@ -1106,7 +1093,6 @@ public class Ant
 
   public AntAction chooseAntAction()
   {
-    //System.out.println("chooseAntAction()...");
     AntAction antAction = new AntAction(AntAction.AntActionType.STASIS);
     AntData antData = this.antData;
 
