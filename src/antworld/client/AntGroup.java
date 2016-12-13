@@ -294,7 +294,12 @@ public class AntGroup
       if(ticksStuckCount > 30)
       {
         groupStuck = true;
-        ticksStuckCount = 0;
+      }
+
+      if(ticksStuckCount > 60)
+      {
+        System.err.println("HAIL MARY: RETURN TO NEST");
+        setGroupGoal(Goal.RETURNTONEST);
       }
 
       if(groupStuck)

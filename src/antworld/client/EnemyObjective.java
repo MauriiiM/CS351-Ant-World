@@ -66,7 +66,7 @@ public class EnemyObjective extends Objective
     enemyHealth = newEnemyData.health;
     enemyData = newEnemyData;
 
-    if(enemyHealth <= 0)
+    if(enemyHealth < 0)
     {
       System.err.println("KILLED AN ENEMY!");
       //allocatedGroup.setGroupObjective(null);

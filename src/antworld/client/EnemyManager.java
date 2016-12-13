@@ -62,6 +62,9 @@ public class EnemyManager extends Thread
       nextEnemy = enemyArray[i];
       enemyID = nextEnemy.id;
 
+      System.err.println("READ ENEMY DATA: " + nextEnemy.toString());
+      System.err.println("enemyObjectiveSize= " + enemyObjectives.size());
+
       if(enemyObjectives.size() == 0)
       {
         addEnemyObjective(nextEnemy);   //Add the objective
@@ -75,7 +78,7 @@ public class EnemyManager extends Thread
         {
           nextStoredEnemy = iterator.next();
           storedEnemyID = nextStoredEnemy.getEnemyID();
-          //System.err.println("nextStoredEnemy = " + storedEnemyID);
+          System.err.println("\t\tnextStoredEnemy = " + storedEnemyID);
 
           if(storedEnemyID == enemyID)  //If the IDs match, must be an enemy we've seen before
           {
@@ -86,7 +89,7 @@ public class EnemyManager extends Thread
             newEnemy = false;
           }
 
-          if(nextStoredEnemy.completed || !nextStoredEnemy.isStillVisible()) //If this enemy has been killed
+          if(nextStoredEnemy.completed) //If this enemy has been killed
           {
             System.err.println("REMOVED ENEMY: enemyData=" + nextStoredEnemy.getEnemyData().toString());
             nextStoredEnemy.unallocateGroup();

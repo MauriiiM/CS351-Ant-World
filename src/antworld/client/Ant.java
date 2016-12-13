@@ -61,12 +61,14 @@ public class Ant
       }
       else
       {
-        if(newData.myAction.type == AntAction.AntActionType.ATTACK)
+        if(antData.myAction.type == AntAction.AntActionType.ATTACK)
         {
-          this.antData.myAction.type = AntAction.AntActionType.STASIS;
+          System.err.println("SHOULD NOT BE ATTACKING");
+          this.antData = newData;
         }
         newData.myAction = this.antData.myAction;
         this.antData = newData;
+        System.err.println("DONT ATTACK: " + this.antData.toString());
         completedLastAction = false;
       }
     }
